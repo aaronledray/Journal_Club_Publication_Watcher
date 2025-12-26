@@ -1,0 +1,1 @@
+"""Journal Lookup Tool module."""

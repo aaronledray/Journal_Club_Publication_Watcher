@@ -1,0 +1,18 @@
+# User configs
+config/*.yaml
+!config/*.sample.yaml
+
+# Outputs
+publications.pptx
+publications.html
+publications.txt
+results.json
+
+# Python caches/env
+__pycache__/
+*.pyc
+.venv/
+
+# OS
+.DS_Store
+Thumbs.db
