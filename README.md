@@ -5,7 +5,7 @@ Fetch PubMed papers by journal, keyword, and author filters, then generate Power
 
 
 
-## MOTIVAION:
+## Motivation:
 
 I wanted to track publications formally and avoid the paranoid feeling of missing out on cool new research. Now I run this weekly in the morning over coffee!
 
