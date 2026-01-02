@@ -7,7 +7,7 @@ from datetime import datetime
 
 def regenerate_html_from_json(json_path: str, output_html: str = "0_publications_regenerated.html"):
     if not os.path.exists(json_path):
-        print(f"❌ JSON file not found at {json_path}")
+        print(f"JSON file not found at {json_path}")
         return
 
     with open(json_path, "r", encoding="utf-8") as f:
@@ -104,7 +104,7 @@ def regenerate_html_from_json(json_path: str, output_html: str = "0_publications
 </html>
 """)
 
-    print(f"✅ HTML regenerated and saved to: {output_html}")
+    print(f"HTML regenerated and saved to: {output_html}")
 
 
 if __name__ == "__main__":

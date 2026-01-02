@@ -162,7 +162,6 @@ def write_html_head(f, title: str = "Journal Lookup Dashboard") -> None:
   <title>{title}</title>
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
   <link rel="stylesheet" href="https://cdn.datatables.net/colreorder/1.6.2/css/colReorder.dataTables.min.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <style>
     :root {{
       --bg-color: #ffffff;
@@ -483,7 +482,6 @@ def write_html_header(f, config_file_dict: Dict[str, Any], start_end_date: Tuple
     f.write(f"""
   <div class="header">
     <h1>
-      <i class="fas fa-microscope"></i>
       Journal Lookup Dashboard
     </h1>
     
@@ -495,17 +493,10 @@ def write_html_header(f, config_file_dict: Dict[str, Any], start_end_date: Tuple
 """)
     
     for source, count in source_counts.items():
-        icon = {
-            'keyword': 'fas fa-search',
-            'crossref': 'fas fa-users',
-            'pubmed_author': 'fas fa-user-md',
-            'orcid': 'fas fa-id-card'
-        }.get(source, 'fas fa-file')
-        
         f.write(f"""
       <div class="stat-card">
         <div class="stat-number">{count}</div>
-        <div><i class="{icon}"></i> {get_source_label(source)}</div>
+        <div>{get_source_label(source)}</div>
       </div>
 """)
     
@@ -514,13 +505,13 @@ def write_html_header(f, config_file_dict: Dict[str, Any], start_end_date: Tuple
     
     <div class="meta-info">
       <div class="meta-item">
-        <strong><i class="fas fa-clock"></i> Report generated:</strong><br>
+        <strong>Report generated:</strong><br>
         {}</div>
       <div class="meta-item">
-        <strong><i class="fas fa-calendar"></i> Date range:</strong><br>
+        <strong>Date range:</strong><br>
         {} to {}</div>
       <div class="meta-item">
-        <strong><i class="fas fa-envelope"></i> User email:</strong><br>
+        <strong>User email:</strong><br>
         {}</div>
     </div>
 """.format(
@@ -536,7 +527,7 @@ def write_html_header(f, config_file_dict: Dict[str, Any], start_end_date: Tuple
         f.write(f"""
     <div class="meta-info">
       <div class="meta-item">
-        <strong><i class="fas fa-book"></i> Monitored Journals:</strong><br>
+        <strong>Monitored Journals:</strong><br>
         {journals_str}</div>
 """)
     
@@ -545,7 +536,7 @@ def write_html_header(f, config_file_dict: Dict[str, Any], start_end_date: Tuple
         
         f.write(f"""
       <div class="meta-item">
-        <strong><i class="fas fa-tags"></i> Keywords:</strong><br>
+        <strong>Keywords:</strong><br>
         {topics_str}</div>
 """)
     
@@ -560,7 +551,7 @@ def write_html_header(f, config_file_dict: Dict[str, Any], start_end_date: Tuple
         
         f.write(f"""
       <div class="meta-item">
-        <strong><i class="fas fa-user-friends"></i> Tracked Authors:</strong><br>
+        <strong>Tracked Authors:</strong><br>
         {authors_str}</div>
 """)
     
@@ -570,15 +561,12 @@ def write_html_header(f, config_file_dict: Dict[str, Any], start_end_date: Tuple
   
   <div class="controls">
     <button class="btn btn-primary" onclick="toggleTheme()">
-      <i class="fas fa-moon"></i>
       <span id="theme-text">Dark Mode</span>
     </button>
     <button class="btn btn-primary" onclick="exportData()">
-      <i class="fas fa-download"></i>
       Export Data
     </button>
     <button class="btn btn-primary" onclick="showStatistics()">
-      <i class="fas fa-chart-bar"></i>
       Statistics
     </button>
   </div>
@@ -587,7 +575,7 @@ def write_html_header(f, config_file_dict: Dict[str, Any], start_end_date: Tuple
   <div id="statisticsModal" class="statistics-modal">
     <div class="statistics-content">
       <span class="statistics-close" onclick="closeStatistics()">&times;</span>
-      <h2><i class="fas fa-chart-bar"></i> Research Statistics</h2>
+      <h2>Research Statistics</h2>
       <div id="statisticsContent">
         <!-- Content will be populated by JavaScript -->
       </div>
@@ -610,7 +598,6 @@ def write_table_section(f, components: List[Dict[str, Any]], paper_type: str) ->
     f.write(f"""
   <div class="section">
     <h2>
-      <i class="fas fa-table"></i>
       {label}
       <span style="font-size: 0.7em; font-weight: normal; color: var(--text-color); opacity: 0.7;">
         ({type_count} papers)
@@ -620,13 +607,13 @@ def write_table_section(f, components: List[Dict[str, Any]], paper_type: str) ->
     <table id="{table_id}" class="display">
       <thead>
         <tr>
-          <th><i class="fas fa-file-alt"></i> Title</th>
-          <th><i class="fas fa-align-left"></i> Abstract</th>
-          <th><i class="fas fa-book-open"></i> Journal</th>
-          <th><i class="fas fa-calendar-alt"></i> Date</th>
-          <th><i class="fas fa-link"></i> DOI</th>
-          <th><i class="fas fa-users"></i> Authors (first & last)</th>
-          <th><i class="fas fa-university"></i> Institutions</th>
+          <th>Title</th>
+          <th>Abstract</th>
+          <th>Journal</th>
+          <th>Date</th>
+          <th>DOI</th>
+          <th>Authors (first & last)</th>
+          <th>Institutions</th>
         </tr>
       </thead>
       <tbody>
@@ -636,7 +623,7 @@ def write_table_section(f, components: List[Dict[str, Any]], paper_type: str) ->
         if comp.get("Source") != paper_type:
             continue
         
-        title = comp.get("Title", "N/A")
+        title = str(comp.get("Title", "N/A"))
         abstract = comp.get("Abstract", "N/A")
         journal = comp.get("Journal", "N/A")
         authors_list = safe_authors(comp.get("Authors", []))
@@ -653,9 +640,9 @@ def write_table_section(f, components: List[Dict[str, Any]], paper_type: str) ->
         
         # Format DOI link
         if doi and doi != "N/A" and "doi.org" not in doi:
-            doi_link = f'<a href="https://doi.org/{doi}" target="_blank" class="doi-link"><i class="fas fa-external-link-alt"></i> {doi}</a>'
+            doi_link = f'<a href="https://doi.org/{doi}" target="_blank" class="doi-link">{doi}</a>'
         elif doi and doi != "N/A":
-            doi_link = f'<a href="{doi}" target="_blank" class="doi-link"><i class="fas fa-external-link-alt"></i> {doi}</a>'
+            doi_link = f'<a href="{doi}" target="_blank" class="doi-link">{doi}</a>'
         else:
             doi_link = "N/A"
         
@@ -680,7 +667,7 @@ def write_table_section(f, components: List[Dict[str, Any]], paper_type: str) ->
           <td class="expanding-cell">{title}</td>
           <td class="expanding-cell">
             <span class="abstract-toggle" onclick="toggleAbstract('{abstract_id}')">
-              <i class="fas fa-eye"></i> View Abstract
+              View Abstract
             </span>
             <div id="{abstract_id}" class="abstract-text">{abstract}</div>
           </td>
@@ -690,7 +677,7 @@ def write_table_section(f, components: List[Dict[str, Any]], paper_type: str) ->
           <td class="expanding-cell author-list">{author_display}</td>
           <td class="expanding-cell">
             <span class="abstract-toggle" onclick="toggleAbstract('{inst_id}')">
-              <i class="fas fa-building"></i> View Institutions
+              View Institutions
             </span>
             <div id="{inst_id}" class="abstract-text">{institutions}</div>
           </td>
@@ -755,16 +742,13 @@ def write_html_scripts(f) -> None:
   function toggleTheme() {
     var body = document.body;
     var themeText = document.getElementById('theme-text');
-    var moonIcon = themeText.previousElementSibling;
     
     if (body.getAttribute('data-theme') === 'light') {
       body.setAttribute('data-theme', 'dark');
       themeText.textContent = 'Light Mode';
-      moonIcon.className = 'fas fa-sun';
     } else {
       body.setAttribute('data-theme', 'light');
       themeText.textContent = 'Dark Mode';
-      moonIcon.className = 'fas fa-moon';
     }
   }
   
@@ -815,7 +799,7 @@ def write_html_scripts(f) -> None:
     
     content.innerHTML = `
       <div class="stats-section">
-        <h3><i class="fas fa-chart-pie"></i> Overview</h3>
+        <h3>Overview</h3>
         <div class="stats-grid-modal">
           <div class="stats-item-modal">
             <strong>${stats.totalPapers}</strong><br>
@@ -837,7 +821,7 @@ def write_html_scripts(f) -> None:
       </div>
 
       <div class="stats-section">
-        <h3><i class="fas fa-trophy"></i> Top Journals</h3>
+        <h3>Top Journals</h3>
         <ul class="top-list">
           ${stats.topJournals.slice(0, 10).map((item, index) => 
             `<li><span>${index + 1}. ${item.name}</span><strong>${item.count}</strong></li>`
@@ -846,7 +830,7 @@ def write_html_scripts(f) -> None:
       </div>
 
       <div class="stats-section">
-        <h3><i class="fas fa-user-friends"></i> Most Prolific Authors</h3>
+        <h3>Most Prolific Authors</h3>
         <ul class="top-list">
           ${stats.topAuthors.slice(0, 10).map((item, index) => 
             `<li><span>${index + 1}. ${item.name}</span><strong>${item.count}</strong></li>`
@@ -855,7 +839,7 @@ def write_html_scripts(f) -> None:
       </div>
 
       <div class="stats-section">
-        <h3><i class="fas fa-search"></i> Search Source Breakdown</h3>
+        <h3>Search Source Breakdown</h3>
         <div class="stats-grid-modal">
           ${Object.entries(stats.sourceBreakdown).map(([source, count]) => `
             <div class="stats-item-modal">
@@ -867,7 +851,7 @@ def write_html_scripts(f) -> None:
       </div>
 
       <div class="stats-section">
-        <h3><i class="fas fa-calendar-alt"></i> Publication Timeline</h3>
+        <h3>Publication Timeline</h3>
         <div class="stats-grid-modal">
           ${Object.entries(stats.yearBreakdown).slice(0, 6).map(([year, count]) => `
             <div class="stats-item-modal">
