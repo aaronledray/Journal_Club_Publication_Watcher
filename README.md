@@ -58,7 +58,7 @@ Validate any time:
 - PowerPoint: `publications.pptx` (one slide per paper).
 - HTML dashboard: `output.html` (interactive tables).
 - Text/JSON summaries: `publications.txt`, `results.json`.
-- Prompts guard against overwriting existing files.
+- Confirms with user before overwriting existing files.
 
 
 
