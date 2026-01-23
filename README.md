@@ -17,20 +17,26 @@ Specifically I wanted a powerpoint output from articles-of-interest, such that I
 
 
 ## Setup:
-- Install dependencies (venv if one is into that):
-  - `python -m pip install -r requirements.txt`
-- Copy sample configs to your private copies, then edit them:
-  - `cp config/meta.sample.yaml config/meta.yaml`
-  - `cp config/journals.sample.yaml config/journals.yaml`
-  - `cp config/keywords.sample.yaml config/keywords.yaml`
-  - `cp config/authors.sample.yaml config/authors.yaml`
-  - `cp config/dates.sample.yaml config/dates.yaml`
-  - Fill in your email, journals, keywords, authors, and date ranges.
-  - (Alternatively, generate fresh samples: `python -m config.config_loader --init-samples`)
-- Validate your config:
-  - `python -m config.config_loader --check`
-- Run the tool:
-  - `python 1_Journal_Lookup_Tool_v3.6.0.py`
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Copy sample configs and edit them
+cp config/meta.sample.yaml config/meta.yaml
+cp config/journals.sample.yaml config/journals.yaml
+cp config/keywords.sample.yaml config/keywords.yaml
+cp config/authors.sample.yaml config/authors.yaml
+cp config/dates.sample.yaml config/dates.yaml
+
+# Edit config files with your details (in config/ directory)
+
+# Validate your config
+python -m config.config_loader --check
+
+# Run the tool
+python main.py
+```
 
 
 
@@ -54,16 +60,38 @@ Validate any time:
 
 
 
+## Usage:
+
+```bash
+# Interactive mode (default)
+python main.py
+
+# Automatic mode (non-interactive)
+python main.py --auto
+
+# Search only by keywords
+python main.py --mode keywords
+
+# Search only by authors/ORCIDs
+python main.py --mode authors
+
+# Custom config and output directories
+python main.py --config-dir /path/to/config --output-dir /path/to/output
+```
+
 ## Outputs:
 - PowerPoint: `publications.pptx` (one slide per paper).
-- HTML dashboard: `output.html` (interactive tables).
+- HTML dashboard: `publications.html` (interactive tables).
 - Text/JSON summaries: `publications.txt`, `results.json`.
 - Confirms with user before overwriting existing files.
 
 
 
 
+## Version History:
+See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
+
 ## Running notes:
-- Tested with Python 3.13.
+- Tested with Python 3.9+.
 - Dependencies are pinned in `requirements.txt`.
 - Have fun, life is short!

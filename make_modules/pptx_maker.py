@@ -550,7 +550,7 @@ def create_presentation(
     # Format end date for display
     end_date_display = end_date if end_date != '3000/01/01' else datetime.now().strftime('%Y/%m/%d')
     
-    print("📊 Creating PowerPoint presentation...")
+    print("Creating PowerPoint presentation...")
     
     # Slide 1: Title slide
     builder.create_text_slide(

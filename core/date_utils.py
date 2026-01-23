@@ -146,7 +146,7 @@ def ask_user_date(lookup_frequency: str, end_date_default: str = '3000/01/01', a
             validate_date(start_date)
             break
         except ValueError as e:
-            print(f"❌ {e}")
+            print(f"{e}")
     
     while True:
         try:
@@ -157,7 +157,7 @@ def ask_user_date(lookup_frequency: str, end_date_default: str = '3000/01/01', a
                 validate_date(end_date)
             break
         except ValueError as e:
-            print(f"❌ {e}")
+            print(f"{e}")
     
     print(f"   Using manual range: {start_date} to {end_date}")
     return start_date, end_date

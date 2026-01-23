@@ -1,64 +1,11 @@
-
-"""
-
-Version History:
-
----------------
-v3.0.0: 7/10/24
-Lisa P.
-
-    - Refactoring Aaron's Journal_Lookup_Tool
-    - adapt entrez query error handling from 
-    - https://stackoverflow.com/questions/75678873/unpredictable-httperror-using-entrez-esearch-function-from-bio-package
-
----------------
-v3.0.1: 7/10/24
-APL
-
-    - re-incorporated sleep(1) between requests, else XML errors from Entrez
-    - improved formatting for google slies by reducing title character limit
-    - if using current date, ppt now displays current date instead of '3000'
-
----------------
-v3.1.0: 7/31/24 - 8/14
-APL
-
-    - user prompted to overwrite pptx file if already exists
-    - Keywords now extracted and added into paper-dict
-    - Fetch full author name and include in the powerpoint file, etc! Complex author name string
-    - Author name is now first and last name, not just last!
-    - added an option to open all doi links found in a new Safari browser window                
-               
---------------- 
-v.3.2.0: 8/28/24 - 9/20
-    
-    - Updated config file to have headers in formatting
-        - adding blank line feature for ALL sub-topic search support
-        - added an "authors" section for confix.txt, which also supports 'all'
-        - added in a keyword "clustered" mode, or like an INCLUSIVE mode!
-    - Fixed the keyword hit table slide in the ppt file
-
-
---------------- 
-v.3.3.0: 11/29/24 - 30+
-
-- Novel keywords slide: text now smaller!
-- text-only output exhaustive printing, prettier closer:
-    - when everything is fetched and ready to be passed to the powerpoint plotter:
-        - pass it to a text-outputter log thing first!
-        - Embed into MAIN.
-   
-    
-"""
-
-
-
-
-
 #!/usr/bin/env python3
 """
-Journal Lookup Tool - Academic Research Publication Finder
+Journal Club Publication Watcher
+
 A tool for searching PubMed and CrossRef for relevant academic publications.
+Generates PowerPoint slides, HTML dashboards, and text summaries for quick review.
+
+See CHANGELOG.md for version history.
 """
 
 import argparse
@@ -304,6 +251,10 @@ def main() -> None:
             open_links_in_safari(components_all, auto_mode=args.auto)
         
         print("Journal lookup completed successfully!")
+        
+
+        
+
         
     except KeyboardInterrupt:
         print("\nOperation cancelled by user.")
