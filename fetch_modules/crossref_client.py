@@ -12,7 +12,7 @@ from utils.display import print_progress
 
 # CrossRef API configuration
 CROSSREF_BASE_URL = "https://api.crossref.org/works"
-DEFAULT_USER_AGENT = "JournalClubLookupTool/3.5.0 (mailto:your.email@institution.edu)"
+DEFAULT_USER_AGENT = "JournalClubPublicationWatcher/3.7.0"
 REQUEST_TIMEOUT = 30
 RATE_LIMIT_DELAY = 1.0  # seconds between requests
 
@@ -480,6 +480,3 @@ if __name__ == "__main__":
     for orcid in test_orcids:
         valid = validate_orcid(orcid)
         print(f"ORCID '{orcid}' is valid: {valid}")
-    
-
-    

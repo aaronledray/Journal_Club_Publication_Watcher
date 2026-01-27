@@ -448,7 +448,5 @@ if __name__ == "__main__":
         print(f"Configuration errors: {errors}")
     else:
         print("Configuration validation passed")
-    
 
-    
     print("PubMed client test completed.")

@@ -30,8 +30,8 @@ from utils.browser_utils import open_links_in_safari
 from utils.display import print_opener, print_results_summary
 
 
-VERSION = "3.6.0"
-UPDATE_DATE = "20251226"
+VERSION = "3.7.0"
+UPDATE_DATE = "20260126"
 
 
 
@@ -102,19 +102,10 @@ def search_publications(
         )
         print(f'   Found {len(keyword_papers)} keyword-based papers')
     
-    # Author-based searches
+    # Author-based searches (via CrossRef ORCID)
     if mode in ["authors", "both"] and (config.get('orcids') or config.get('named_authors')):
         print('Searching by authors...')
-        
-        # PubMed author search (if you have this implemented)
-        # if config.get('named_authors'):
-        #     print('   Searching PubMed by author names...')
-        #     _, pubmed_author_papers, _ = lookup_pubmed(
-        #         config_file_dict=config,
-        #         start_end_date=date_range,
-        #         mode="authors"
-        #     )
-        
+
         # CrossRef ORCID search
         if config.get('orcids'):
             print('   Searching CrossRef by ORCIDs...')
@@ -251,11 +242,7 @@ def main() -> None:
             open_links_in_safari(components_all, auto_mode=args.auto)
         
         print("Journal lookup completed successfully!")
-        
 
-        
-
-        
     except KeyboardInterrupt:
         print("\nOperation cancelled by user.")
     except Exception as e:
