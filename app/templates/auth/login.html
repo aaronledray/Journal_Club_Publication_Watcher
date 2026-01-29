@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Journal Watcher</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body class="login-page">
+    <div class="login-container">
+        <div class="login-box">
+            <h1>Journal Watcher</h1>
+            <p class="login-subtitle">Track academic publications that matter to you</p>
+
+            {% if error == "invalid_token" %}
+            <div class="alert alert-error">
+                Invalid or expired login link. Please request a new one.
+            </div>
+            {% endif %}
+
+            <form id="login-form" hx-post="/auth/login" hx-swap="innerHTML" hx-target="#login-result">
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        required
+                        placeholder="you@institution.edu"
+                        class="form-input"
+                    >
+                </div>
+                <button type="submit" class="btn btn-primary btn-full">
+                    Send Magic Link
+                </button>
+            </form>
+
+            <div id="login-result"></div>
+
+            <p class="login-help">
+                Enter your email to receive a secure login link.
+                No password required!
+            </p>
+        </div>
+    </div>
+
+    <script>
+        document.body.addEventListener('htmx:afterSwap', function(evt) {
+            if (evt.detail.target.id === 'login-result') {
+                document.getElementById('login-form').style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>

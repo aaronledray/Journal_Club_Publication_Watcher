@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - Journal Watcher{% endblock %}
+
+{% block content %}
+<div class="settings-page">
+    <div class="page-header">
+        <a href="/dashboard" class="back-link">&larr; Back to Dashboard</a>
+        <h1>Search Settings</h1>
+    </div>
+
+    <div class="settings-grid">
+        <!-- Keywords Section -->
+        <div class="settings-section">
+            <h2>Keywords</h2>
+            <p class="section-description">Topics and terms to search for in publications.</p>
+
+            <form
+                hx-post="/api/config/keywords"
+                hx-target="#keywords-list"
+                hx-swap="beforeend"
+                hx-on::after-request="this.reset()"
+                class="add-form"
+            >
+                <input type="text" name="keyword" placeholder="e.g., CRISPR, machine learning" required class="form-input">
+                <button type="submit" class="btn btn-primary">Add</button>
+            </form>
+
+            <div id="keywords-list" class="item-list">
+                {% if config %}
+                {% for kw in config.keywords %}
+                <div class="item" id="keyword-{{ kw.id }}">
+                    <span class="item-text">{{ kw.keyword }}</span>
+                    <button
+                        class="btn btn-sm btn-danger"
+                        hx-delete="/api/config/keywords/{{ kw.id }}"
+                        hx-target="#keyword-{{ kw.id }}"
+                        hx-swap="outerHTML"
+                    >
+                        Remove
+                    </button>
+                </div>
+                {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Journals Section -->
+        <div class="settings-section">
+            <h2>Journals</h2>
+            <p class="section-description">Journals to filter your keyword searches.</p>
+
+            <form
+                hx-post="/api/config/journals"
+                hx-target="#journals-list"
+                hx-swap="beforeend"
+                hx-on::after-request="this.reset()"
+                class="add-form"
+            >
+                <input type="text" name="name" placeholder="e.g., Nature, Science, Cell" required class="form-input">
+                <button type="submit" class="btn btn-primary">Add</button>
+            </form>
+
+            <div id="journals-list" class="item-list">
+                {% if config %}
+                {% for j in config.journals %}
+                <div class="item" id="journal-{{ j.id }}">
+                    <span class="item-text">{{ j.name }}</span>
+                    <button
+                        class="btn btn-sm btn-danger"
+                        hx-delete="/api/config/journals/{{ j.id }}"
+                        hx-target="#journal-{{ j.id }}"
+                        hx-swap="outerHTML"
+                    >
+                        Remove
+                    </button>
+                </div>
+                {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Authors Section -->
+        <div class="settings-section">
+            <h2>Tracked Authors</h2>
+            <p class="section-description">Authors to track by ORCID (finds all their publications).</p>
+
+            <form
+                hx-post="/api/config/authors"
+                hx-target="#authors-list"
+                hx-swap="beforeend"
+                hx-on::after-request="this.reset()"
+                class="add-form add-form-author"
+            >
+                <input type="text" name="orcid" placeholder="ORCID: 0000-0000-0000-0000" required class="form-input">
+                <input type="text" name="name" placeholder="Name (optional)" class="form-input">
+                <button type="submit" class="btn btn-primary">Add</button>
+            </form>
+
+            <div id="authors-list" class="item-list">
+                {% if config %}
+                {% for a in config.authors %}
+                <div class="item" id="author-{{ a.id }}">
+                    <span class="item-text">
+                        {% if a.name %}{{ a.name }} ({{ a.orcid }}){% else %}{{ a.orcid }}{% endif %}
+                    </span>
+                    <button
+                        class="btn btn-sm btn-danger"
+                        hx-delete="/api/config/authors/{{ a.id }}"
+                        hx-target="#author-{{ a.id }}"
+                        hx-swap="outerHTML"
+                    >
+                        Remove
+                    </button>
+                </div>
+                {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Search Frequency -->
+        <div class="settings-section">
+            <h2>Search Frequency</h2>
+            <p class="section-description">How far back to search when running searches.</p>
+
+            <form
+                hx-put="/api/config"
+                hx-swap="none"
+                class="frequency-form"
+            >
+                <select name="search_frequency" class="form-select" onchange="this.form.requestSubmit()">
+                    <option value="daily" {% if config and config.search_frequency == 'daily' %}selected{% endif %}>Daily (1 day)</option>
+                    <option value="weekly" {% if not config or config.search_frequency == 'weekly' %}selected{% endif %}>Weekly (7 days)</option>
+                    <option value="biweekly" {% if config and config.search_frequency == 'biweekly' %}selected{% endif %}>Biweekly (14 days)</option>
+                    <option value="monthly" {% if config and config.search_frequency == 'monthly' %}selected{% endif %}>Monthly (30 days)</option>
+                </select>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Show feedback on successful operations
+    document.body.addEventListener('htmx:afterRequest', function(evt) {
+        if (evt.detail.successful) {
+            // Brief visual feedback
+            evt.detail.target.style.backgroundColor = 'var(--success-bg)';
+            setTimeout(() => {
+                evt.detail.target.style.backgroundColor = '';
+            }, 500);
+        }
+    });
+</script>
+{% endblock %}

@@ -17,3 +17,8 @@ __pycache__/
 # OS
 .DS_Store
 Thumbs.db
+
+# Web app
+.env
+*.db
+journal_watcher.db

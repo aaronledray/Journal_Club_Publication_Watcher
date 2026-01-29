@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block title %}Search Results - Journal Watcher{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+{% endblock %}
+
+{% block content %}
+<div class="results-page">
+    <div class="page-header">
+        <div>
+            <a href="/dashboard" class="back-link">&larr; Back to Dashboard</a>
+            <h1>Search Results</h1>
+            <p class="search-meta">
+                {{ search_run.start_date }} to {{ search_run.end_date }}
+                &bull; {{ search_run.total_papers_found }} papers found
+            </p>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button class="btn btn-sm" onclick="toggleTheme()">
+            <span id="theme-text">Dark Mode</span>
+        </button>
+        <button class="btn btn-sm" onclick="exportCSV()">Export CSV</button>
+    </div>
+
+    <div class="stats-grid stats-small">
+        <div class="stat-card">
+            <div class="stat-number">{{ search_run.keyword_papers_count }}</div>
+            <div class="stat-label">Keyword Results</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ search_run.author_papers_count }}</div>
+            <div class="stat-label">Author Results</div>
+        </div>
+    </div>
+
+    {% if papers %}
+    <table id="papersTable" class="display">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Journal</th>
+                <th>Authors</th>
+                <th>Date</th>
+                <th>Source</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for paper in papers %}
+            <tr>
+                <td class="title-cell">
+                    <div class="paper-title">{{ paper.title }}</div>
+                    {% if paper.abstract %}
+                    <div class="abstract-toggle" onclick="toggleAbstract('abstract-{{ paper.id }}')">
+                        View Abstract
+                    </div>
+                    <div id="abstract-{{ paper.id }}" class="abstract-text">
+                        {{ paper.abstract }}
+                    </div>
+                    {% endif %}
+                </td>
+                <td>{{ paper.journal or 'N/A' }}</td>
+                <td class="authors-cell">
+                    {% if paper.authors %}
+                        {% if paper.authors|length == 1 %}
+                            {{ paper.authors[0] }}
+                        {% elif paper.authors|length == 2 %}
+                            {{ paper.authors[0] }}, {{ paper.authors[1] }}
+                        {% else %}
+                            {{ paper.authors[0] }}, {{ paper.authors[-1] }}
+                            <span class="more-authors">(+{{ paper.authors|length - 2 }} more)</span>
+                        {% endif %}
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </td>
+                <td>{{ paper.date or 'N/A' }}</td>
+                <td><span class="source-badge source-{{ paper.source }}">{{ paper.source }}</span></td>
+                <td class="actions-cell">
+                    {% if paper.link %}
+                    <a href="{{ paper.link if 'http' in paper.link else 'https://doi.org/' + paper.link }}"
+                       target="_blank"
+                       class="btn btn-sm">
+                        Open
+                    </a>
+                    {% endif %}
+                    <button
+                        class="btn btn-sm btn-icon"
+                        hx-patch="/api/papers/{{ paper.id }}/state"
+                        hx-vals='{"is_saved": true}'
+                        hx-swap="none"
+                        title="Save paper"
+                    >
+                        &#9734;
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <p>No papers found in this search.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script>
+    $(document).ready(function() {
+        $('#papersTable').DataTable({
+            pageLength: 25,
+            order: [[3, 'desc']],
+            columnDefs: [
+                { targets: 0, width: '35%' },
+                { targets: 5, orderable: false }
+            ]
+        });
+    });
+
+    function toggleAbstract(id) {
+        var el = document.getElementById(id);
+        if (el) {
+            el.style.display = el.style.display === 'block' ? 'none' : 'block';
+        }
+    }
+
+    function toggleTheme() {
+        var body = document.body;
+        var html = document.documentElement;
+        var themeText = document.getElementById('theme-text');
+
+        if (html.getAttribute('data-theme') === 'light') {
+            html.setAttribute('data-theme', 'dark');
+            themeText.textContent = 'Light Mode';
+        } else {
+            html.setAttribute('data-theme', 'light');
+            themeText.textContent = 'Dark Mode';
+        }
+    }
+
+    function exportCSV() {
+        var table = document.getElementById('papersTable');
+        var csv = [];
+        var rows = table.querySelectorAll('tr');
+
+        for (var i = 0; i < rows.length; i++) {
+            var row = [], cols = rows[i].querySelectorAll('td, th');
+            for (var j = 0; j < cols.length - 1; j++) { // Skip actions column
+                var text = cols[j].textContent.trim().replace(/"/g, '""');
+                row.push('"' + text + '"');
+            }
+            csv.push(row.join(','));
+        }
+
+        var csvContent = csv.join('\n');
+        var blob = new Blob([csvContent], { type: 'text/csv' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'papers.csv';
+        a.click();
+    }
+</script>
+{% endblock %}

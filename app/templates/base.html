@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Journal Watcher{% endblock %}</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    {% block navbar %}
+    <nav class="navbar">
+        <div class="nav-brand">
+            <a href="/dashboard">Journal Watcher</a>
+        </div>
+        {% if user %}
+        <div class="nav-links">
+            <a href="/dashboard" class="nav-link">Dashboard</a>
+            <a href="/dashboard/settings" class="nav-link">Settings</a>
+            <span class="nav-user">{{ user.email }}</span>
+            <form action="/auth/logout" method="post" style="display: inline;">
+                <button type="submit" class="btn btn-sm">Logout</button>
+            </form>
+        </div>
+        {% endif %}
+    </nav>
+    {% endblock %}
+
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <script src="/static/js/app.js"></script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

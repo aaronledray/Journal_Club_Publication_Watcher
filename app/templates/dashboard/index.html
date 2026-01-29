@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Journal Watcher{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <div class="page-header">
+        <h1>Dashboard</h1>
+        <button
+            class="btn btn-primary"
+            hx-post="/api/searches"
+            hx-target="#search-result"
+            hx-swap="innerHTML"
+            hx-indicator="#search-spinner"
+        >
+            <span id="search-spinner" class="htmx-indicator">Searching...</span>
+            <span class="btn-text">Run Search Now</span>
+        </button>
+    </div>
+
+    <div id="search-result"></div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-number">{{ config.keywords|length if config else 0 }}</div>
+            <div class="stat-label">Keywords</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ config.journals|length if config else 0 }}</div>
+            <div class="stat-label">Journals</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ config.authors|length if config else 0 }}</div>
+            <div class="stat-label">Authors</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ total_papers }}</div>
+            <div class="stat-label">Papers Found</div>
+        </div>
+    </div>
+
+    {% if not config or (not config.keywords and not config.journals) %}
+    <div class="alert alert-info">
+        <strong>Get started!</strong>
+        <a href="/dashboard/settings">Add keywords and journals</a> to start tracking publications.
+    </div>
+    {% endif %}
+
+    <div class="section">
+        <h2>Recent Searches</h2>
+
+        {% if recent_searches %}
+        <div class="search-list">
+            {% for search in recent_searches %}
+            <div class="search-card">
+                <div class="search-header">
+                    <span class="search-date">{{ search.started_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                    <span class="search-status status-{{ search.status }}">{{ search.status }}</span>
+                </div>
+                <div class="search-stats">
+                    <span>{{ search.total_papers_found }} papers</span>
+                    <span>{{ search.start_date }} to {{ search.end_date }}</span>
+                </div>
+                {% if search.status == 'completed' and search.total_papers_found > 0 %}
+                <a href="/dashboard/results/{{ search.id }}" class="btn btn-sm">View Results</a>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="empty-state">No searches yet. Click "Run Search Now" to get started!</p>
+        {% endif %}
+    </div>
+
+    <div class="section">
+        <h2>Quick Config</h2>
+        <div class="config-preview">
+            {% if config %}
+            <div class="config-section">
+                <h3>Keywords</h3>
+                <div class="tag-list">
+                    {% for kw in config.keywords[:5] %}
+                    <span class="tag">{{ kw.keyword }}</span>
+                    {% endfor %}
+                    {% if config.keywords|length > 5 %}
+                    <span class="tag tag-more">+{{ config.keywords|length - 5 }} more</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="config-section">
+                <h3>Journals</h3>
+                <div class="tag-list">
+                    {% for j in config.journals[:5] %}
+                    <span class="tag">{{ j.name }}</span>
+                    {% endfor %}
+                    {% if config.journals|length > 5 %}
+                    <span class="tag tag-more">+{{ config.journals|length - 5 }} more</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+            <a href="/dashboard/settings" class="btn btn-sm">Edit Settings</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Handle search completion
+    document.body.addEventListener('htmx:afterSwap', function(evt) {
+        if (evt.detail.target.id === 'search-result') {
+            // Reload page after 2 seconds to show updated results
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        }
+    });
+</script>
+{% endblock %}
