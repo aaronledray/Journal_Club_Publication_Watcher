@@ -28,10 +28,15 @@ from output_modules.html_builder import write_html_dashboard
 from make_modules.pptx_maker import create_presentation
 from utils.browser_utils import open_links_in_safari
 from utils.display import print_opener, print_results_summary
+from notify_modules.seen_tracker import (
+    load_seen_state, filter_unseen, mark_seen, prune_old_entries, save_seen_state,
+    DEFAULT_SEEN_STATE_PATH,
+)
+from notify_modules.email_sender import send_digest_email
 
 
-VERSION = "3.7.0"
-UPDATE_DATE = "20260126"
+VERSION = "3.8.0"
+UPDATE_DATE = "20260805"
 
 
 
@@ -68,11 +73,27 @@ Examples:
     )
     
     parser.add_argument(
-        "--output-dir", 
+        "--output-dir",
         default=".",
         help="Output directory for generated files (default: current directory)"
     )
-    
+
+    parser.add_argument(
+        '--notify-email',
+        action='store_true',
+        help=(
+            "Send a weekly email digest of newly-found papers via Gmail SMTP. "
+            "Requires GMAIL_ADDRESS, GMAIL_APP_PASSWORD, RECIPIENT_EMAIL env vars. "
+            "Dedupes against the seen-state file (see --seen-state-path)."
+        )
+    )
+
+    parser.add_argument(
+        '--seen-state-path',
+        default=DEFAULT_SEEN_STATE_PATH,
+        help=f"Path to the cross-run seen-papers state file (default: {DEFAULT_SEEN_STATE_PATH})"
+    )
+
     return parser.parse_args()
 
 
@@ -190,6 +211,29 @@ def generate_outputs(
         webbrowser.open(f'file://{html_path.resolve()}')
 
 
+def notify_new_papers_by_email(
+    components_all: List[Dict],
+    date_range: Tuple[str, str],
+    seen_state_path: str
+) -> None:
+    """
+    Filter combined components against seen-state, email unseen ones, then
+    update state. Order matters: send BEFORE marking seen, so a failed send
+    never causes a paper to be silently dropped from future digests.
+    """
+    print('Checking for unseen papers to email...')
+    seen_state = load_seen_state(seen_state_path)
+    new_components = filter_unseen(components_all, seen_state)
+    print(f'   {len(new_components)} new paper(s) since last notified run')
+
+    send_digest_email(new_components, date_range)
+
+    seen_state = mark_seen(new_components, seen_state)
+    seen_state = prune_old_entries(seen_state)
+    save_seen_state(seen_state, seen_state_path)
+    print(f'   Updated seen-state file: {seen_state_path}')
+
+
 def main() -> None:
     """Main entry point."""
     args = parse_arguments()
@@ -225,11 +269,15 @@ def main() -> None:
         
         # Display results summary
         print_results_summary(components_keyword, components_orcid)
-        
+
+        if args.notify_email:
+            components_all = combine_components(components_keyword, components_orcid)
+            notify_new_papers_by_email(components_all, date_range, args.seen_state_path)
+
         if not (components_keyword or components_orcid):
             print("No papers found matching your criteria.")
             return
-        
+
         # Generate outputs
         generate_outputs(
             config, date_range, components_keyword, components_orcid,
@@ -247,7 +295,7 @@ def main() -> None:
         print("\nOperation cancelled by user.")
     except Exception as e:
         print(f" Error: {e}")
-        if not args.auto:
+        if not args.auto or args.notify_email:
             raise
 
 
