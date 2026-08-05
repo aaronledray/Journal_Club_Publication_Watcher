@@ -202,7 +202,8 @@ def generate_outputs(
             "generated_at": datetime.now().isoformat(),
             "version": VERSION
         },
-        filename=str(output_path / 'results.json')
+        filename=str(output_path / 'results.json'),
+        auto_mode=auto_mode
     )
     
     # Open browser if not in auto mode
