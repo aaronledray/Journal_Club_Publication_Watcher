@@ -2,6 +2,14 @@
 
 All notable changes to the Journal Club Publication Watcher project will be documented in this file.
 
+## [3.8.0] - 2026-08-05
+
+### Added
+- Weekly email digest via `--notify-email` flag, sent over Gmail SMTP
+- GitHub Actions workflow (`.github/workflows/weekly-digest.yml`) to run the digest on a weekly cron schedule
+- Cross-run "seen papers" tracking (`state/seen_ids.json`, `notify_modules/seen_tracker.py`) so digests only include papers not already reported, keyed by PMID/DOI/title
+- `PMID` field on PubMed-sourced paper components
+
 ## [3.6.0] - 2024-12-26
 
 ### Added

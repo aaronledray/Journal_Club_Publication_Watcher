@@ -77,6 +77,9 @@ python main.py --mode authors
 
 # Custom config and output directories
 python main.py --config-dir /path/to/config --output-dir /path/to/output
+
+# Send a weekly email digest of newly-found papers (see "Weekly Email Digest" below)
+python main.py --auto --notify-email
 ```
 
 ## Outputs:
@@ -84,6 +87,39 @@ python main.py --config-dir /path/to/config --output-dir /path/to/output
 - HTML dashboard: `publications.html` (interactive tables).
 - Text/JSON summaries: `publications.txt`, `results.json`.
 - Confirms with user before overwriting existing files.
+
+
+
+
+## Weekly Email Digest (GitHub Actions):
+
+A GitHub Actions workflow (`.github/workflows/weekly-digest.yml`) runs `main.py --auto --notify-email` on a schedule in the cloud, so you get a weekly email of newly-published papers without needing your own machine to be on.
+
+**How dedup works**: each run compares found papers against `state/seen_ids.json` (identified by PMID, then DOI, then a slugified title as a fallback) and only emails ones it hasn't reported before, then commits the updated state file back to the repo. This file only stores PMIDs/DOIs/title-slugs — no personal data — so it's safe to keep tracked in the public repo. Don't hand-edit or delete it; deleting it will cause every currently-matching paper to be re-sent once.
+
+### One-time setup
+
+**1. Gmail App Password** — the sending Gmail account needs 2-Step Verification enabled, then generate one at Google Account → Security → App Passwords → scope "Mail" (a regular Gmail password will not work with SMTP here).
+
+**2. Bundle your personal config as a secret** — `config/*.yaml` (your keywords, journals, ORCIDs) stays gitignored and out of the public repo. Instead, package it as a single base64-encoded secret the workflow decodes at run time:
+
+```bash
+tar -czf /tmp/config-bundle.tar.gz -C config meta.yaml journals.yaml keywords.yaml authors.yaml dates.yaml
+base64 -i /tmp/config-bundle.tar.gz -o /tmp/config-bundle.b64   # Linux: base64 -w0 ... > ...
+gh secret set CONFIG_BUNDLE_B64 --repo <owner>/<repo> < /tmp/config-bundle.b64
+rm /tmp/config-bundle.tar.gz /tmp/config-bundle.b64
+```
+
+Re-run this any time your local `config/*.yaml` files change — the secret is a point-in-time snapshot, not synced automatically.
+
+**3. Set the remaining repo secrets** (Settings → Secrets and variables → Actions, or `gh secret set <NAME>`):
+- `GMAIL_ADDRESS` — the sending Gmail address.
+- `GMAIL_APP_PASSWORD` — the App Password from step 1.
+- `RECIPIENT_EMAIL` — where the digest should be sent.
+
+### Schedule and manual runs
+
+The default schedule is `0 13 * * 1` (Monday 13:00 UTC — GitHub Actions cron is always UTC, adjust for your local time). Edit the `cron:` line in the workflow file to change it. You can also trigger a test run any time from the Actions tab → "Weekly Publication Digest" → "Run workflow" (`workflow_dispatch`).
 
 
 
