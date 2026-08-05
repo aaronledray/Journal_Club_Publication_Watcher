@@ -727,7 +727,8 @@ def extract_pubmed_paper_info(article: Dict[str, Any]) -> Dict[str, Any]:
         "Institution": extract_pubmed_institutions(article_data),
         "Abstract": extract_pubmed_abstract(article_data),
         "Date": parse_api_date(article_data.get("ArticleDate"), "pubmed"),
-        "Source": "pubmed"
+        "Source": "pubmed",
+        "PMID": str(citation.get("PMID", "")).strip() or None
     }
     
     return component

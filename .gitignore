@@ -7,6 +7,7 @@ publications.pptx
 publications.html
 publications.txt
 results.json
+output/
 
 # Python caches/env
 __pycache__/
@@ -17,3 +18,22 @@ __pycache__/
 # OS
 .DS_Store
 Thumbs.db
+
+# Editors / IDEs
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Web app
+.env
+.env.*
+!.env.example
+*.db
+journal_watcher.db
+
+# Notification state - intentionally NOT ignored.
+# state/seen_ids.json only stores PMIDs/DOIs/title-slugs (non-sensitive) used
+# to dedupe weekly email digests across GitHub Actions runs; it must stay
+# tracked so the workflow can commit updates to it.

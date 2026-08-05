@@ -1,0 +1,56 @@
+name: Weekly Publication Digest
+
+on:
+  schedule:
+    # 13:00 UTC every Monday. GitHub Actions cron is always UTC - adjust the
+    # minute/hour/day here for your preferred local time (e.g. 13:00 UTC is
+    # 8:00am US Eastern during EST / 9:00am during EDT).
+    - cron: '0 13 * * 1'
+  workflow_dispatch: {}   # allows manual "Run workflow" from the Actions tab for testing
+
+permissions:
+  contents: write   # needed to push the updated state/seen_ids.json back to the repo
+
+jobs:
+  send-digest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Restore personal config from secret
+        env:
+          CONFIG_BUNDLE_B64: ${{ secrets.CONFIG_BUNDLE_B64 }}
+        run: |
+          mkdir -p config
+          echo "$CONFIG_BUNDLE_B64" | base64 -d > config-bundle.tar.gz
+          tar -xzf config-bundle.tar.gz -C config
+          rm config-bundle.tar.gz
+          ls -la config/
+
+      - name: Run weekly lookup and send email digest
+        env:
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          RECIPIENT_EMAIL: ${{ secrets.RECIPIENT_EMAIL }}
+        run: python main.py --auto --notify-email --mode both
+
+      - name: Commit updated seen-state file (if changed)
+        run: |
+          git config user.name "journal-watcher-bot"
+          git config user.email "actions@users.noreply.github.com"
+          if git diff --quiet -- state/seen_ids.json; then
+            echo "No change to state/seen_ids.json; nothing to commit."
+          else
+            git add state/seen_ids.json
+            git commit -m "chore: update seen-papers state [skip ci]"
+            git push
+          fi
