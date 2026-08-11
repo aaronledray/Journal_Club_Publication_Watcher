@@ -2,6 +2,15 @@
 
 All notable changes to the Journal Club Publication Watcher project will be documented in this file.
 
+## [3.9.0] - 2026-08-11
+
+### Added
+- Keyword-based preprint server watching (bioRxiv, medRxiv, chemRxiv, ...) via new `preprint_servers` field in `meta.yaml`, searched through CrossRef's `posted-content` records using the existing `topics` keywords
+- `search_preprints_by_keywords()` in `fetch_modules/crossref_client.py`, with per-server matching (institution-name for bioRxiv/medRxiv, DOI-prefix for chemRxiv since it doesn't populate CrossRef's institution field)
+
+### Fixed
+- `extract_crossref_journal()` now falls back to the preprint server name when `container-title` is absent, instead of showing "No journal available" for every preprint
+
 ## [3.8.0] - 2026-08-05
 
 ### Added

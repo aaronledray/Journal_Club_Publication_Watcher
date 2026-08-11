@@ -89,14 +89,26 @@ def extract_crossref_title(paper: Dict[str, Any]) -> str:
 
 
 def extract_crossref_journal(paper: Dict[str, Any]) -> str:
-    """Extract journal name from CrossRef paper data."""
-    journal = paper.get("container-title", ["No journal available"])
+    """Extract journal name from CrossRef paper data. Preprints (posted-content)
+    have no container-title, so fall back to the hosting server's name - either
+    CrossRef's 'institution' field (bioRxiv/medRxiv) or, when that's also absent
+    (e.g. chemRxiv), the Source tag search_preprints_by_keywords already set."""
+    journal = paper.get("container-title")
     if isinstance(journal, list) and journal:
         return journal[0]
-    elif isinstance(journal, str):
+    elif isinstance(journal, str) and journal:
         return journal
-    else:
-        return "No journal available"
+
+    institution = paper.get("institution") or [{}]
+    institution_name = institution[0].get("name", "").strip()
+    if institution_name:
+        return institution_name
+
+    source = (paper.get("Source") or "").strip()
+    if source and source.lower() != "crossref":
+        return source
+
+    return "No journal available"
 
 
 
@@ -203,18 +215,20 @@ def process_crossref_papers(papers: List[Dict[str, Any]]) -> List[Dict[str, Any]
 
 
 def process_papers(
-    keyword_papers: List[Dict[str, Any]], 
-    pubmed_author_papers: List[Dict[str, Any]], 
-    crossref_papers: List[Dict[str, Any]]
+    keyword_papers: List[Dict[str, Any]],
+    pubmed_author_papers: List[Dict[str, Any]],
+    crossref_papers: List[Dict[str, Any]],
+    preprint_papers: List[Dict[str, Any]] = None
 ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     """
     Process all papers and separate into keyword-based and ORCID-based results.
-    
+
     Args:
         keyword_papers: Papers from keyword searches
         pubmed_author_papers: Papers from PubMed author searches
         crossref_papers: Papers from CrossRef ORCID searches
-        
+        preprint_papers: Papers from preprint server (CrossRef posted-content) keyword searches
+
     Returns:
         Tuple of (keyword_components, orcid_components)
     """
@@ -222,7 +236,12 @@ def process_papers(
     components_keyword = process_pubmed_papers(keyword_papers)
     for component in components_keyword:
         component["Source"] = "keyword"
-    
+
+    # Process preprint keyword searches (Source already set per-item to the
+    # matched server's name, e.g. "bioRxiv", by search_preprints_by_keywords)
+    components_preprint = process_crossref_papers(preprint_papers or [])
+    components_keyword = components_keyword + components_preprint
+
     # Process PubMed author-based papers
     components_pubmed_author = process_pubmed_papers(pubmed_author_papers)
     for component in components_pubmed_author:
@@ -632,7 +651,7 @@ def extract_crossref_paper_info(paper: Dict[str, Any]) -> Dict[str, Any]:
         "Institution": ["No institution listed (CrossRef)"],  # CrossRef rarely has institutions
         "Abstract": paper.get("abstract", "No abstract available"),
         "Date": parse_api_date(paper.get("issued"), "crossref"),
-        "Source": "crossref"
+        "Source": paper.get("Source", "crossref")
     }
     
     return component

@@ -43,7 +43,7 @@ python main.py
 
 ## Configuration:
 Config lives in `config/` as YAML files:
-- `meta.yaml`: `email` (required, used for PubMed), `lookup_frequency` (e.g., `1 week`), `update_date`.
+- `meta.yaml`: `email` (required, used for PubMed), `lookup_frequency` (e.g., `1 week`), `update_date`, `preprint_servers` (optional, e.g. `[bioRxiv, medRxiv, chemRxiv]`).
 - `journals.yaml`: `journals: [ ... ]` list of journal names.
 - `keywords.yaml`: `topics: [ ... ]` list of keywords.
 - `authors.yaml`: `authors: [ ... ]` list of ORCIDs, optionally with names (`0000-0000-0000-0000 # Jane Doe`).
@@ -56,6 +56,19 @@ Create starter files. Two options:
 Validate any time:
 - `python -m config.config_loader --check`
 - Fails fast on missing email, empty journal/keyword lists, invalid dates, or bad lookup_frequency formatting.
+
+### Preprint servers (bioRxiv, medRxiv, chemRxiv, ...)
+
+Set `preprint_servers` in `meta.yaml` to also search preprint servers using the same `topics` keywords:
+
+```yaml
+preprint_servers:
+- bioRxiv
+- medRxiv
+- chemRxiv
+```
+
+This runs alongside the normal PubMed keyword search (only in `--mode keywords`/`both`) via CrossRef's `posted-content` records, since bioRxiv/medRxiv/chemRxiv all register their DOIs with CrossRef. Results are tagged with the matched server as their `Source`/`Journal`. Omit `preprint_servers` (or leave it empty) to skip preprint search entirely — it's off by default.
 
 
 

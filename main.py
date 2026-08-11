@@ -21,7 +21,7 @@ from typing import Dict, List, Tuple
 from config.config_loader import load_config
 from core.date_utils import ask_user_date
 from core.paper_processor import process_papers, combine_components
-from fetch_modules.crossref_client import lookup_crossref
+from fetch_modules.crossref_client import lookup_crossref, search_preprints_by_keywords
 from fetch_modules.pubmed_client import lookup_pubmed
 from output_modules.file_writers import write_txt_file, write_json_file
 from output_modules.html_builder import write_html_dashboard
@@ -35,8 +35,8 @@ from notify_modules.seen_tracker import (
 from notify_modules.email_sender import send_digest_email
 
 
-VERSION = "3.8.0"
-UPDATE_DATE = "20260805"
+VERSION = "3.9.0"
+UPDATE_DATE = "20260811"
 
 
 
@@ -98,21 +98,22 @@ Examples:
 
 
 def search_publications(
-    config: Dict, 
-    date_range: Tuple[str, str], 
+    config: Dict,
+    date_range: Tuple[str, str],
     mode: str
-) -> Tuple[List, List, List, Dict]:
+) -> Tuple[List, List, List, List, Dict]:
     """
     Search for publications based on configuration and mode.
-    
+
     Returns:
-        Tuple of (keyword_papers, pubmed_author_papers, crossref_papers, keyword_frequencies)
+        Tuple of (keyword_papers, pubmed_author_papers, crossref_papers, preprint_papers, keyword_frequencies)
     """
     keyword_papers = []
     pubmed_author_papers = []
     crossref_papers = []
+    preprint_papers = []
     keyword_frequencies = {kw: 0 for kw in config.get('topics', [])}
-    
+
     # Keyword-based search
     if mode in ["keywords", "both"] and config.get('topics'):
         print('Searching PubMed by keywords...')
@@ -122,7 +123,18 @@ def search_publications(
             mode="keywords"
         )
         print(f'   Found {len(keyword_papers)} keyword-based papers')
-    
+
+        # Preprint servers (bioRxiv, medRxiv, etc. via CrossRef posted-content)
+        if config.get('preprint_servers'):
+            print('Searching preprint servers by keywords...')
+            preprint_papers = search_preprints_by_keywords(
+                keywords=config['topics'],
+                start_end_date=date_range,
+                servers=config['preprint_servers'],
+                email=config.get('email')
+            )
+            print(f'   Found {len(preprint_papers)} preprint papers')
+
     # Author-based searches (via CrossRef ORCID)
     if mode in ["authors", "both"] and (config.get('orcids') or config.get('named_authors')):
         print('Searching by authors...')
@@ -136,7 +148,7 @@ def search_publications(
             )
             print(f'   Found {len(crossref_papers)} CrossRef papers')
     
-    return keyword_papers, pubmed_author_papers, crossref_papers, keyword_frequencies
+    return keyword_papers, pubmed_author_papers, crossref_papers, preprint_papers, keyword_frequencies
 
 
 def generate_outputs(
@@ -258,14 +270,14 @@ def main() -> None:
         
         # Search for publications
         print('Searching for publications...')
-        keyword_papers, pubmed_author_papers, crossref_papers, keyword_frequencies = search_publications(
+        keyword_papers, pubmed_author_papers, crossref_papers, preprint_papers, keyword_frequencies = search_publications(
             config, date_range, args.mode
         )
-        
+
         # Process papers into components
         print('Processing paper data...')
         components_keyword, components_orcid = process_papers(
-            keyword_papers, pubmed_author_papers, crossref_papers
+            keyword_papers, pubmed_author_papers, crossref_papers, preprint_papers
         )
         
         # Display results summary

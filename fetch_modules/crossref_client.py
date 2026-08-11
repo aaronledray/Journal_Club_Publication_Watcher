@@ -331,6 +331,100 @@ def search_crossref_by_keywords(
     return unique_publications
 
 
+# CrossRef doesn't expose preprint-server identity uniformly. bioRxiv/medRxiv
+# populate the 'institution' field with their own name, but chemRxiv (whose
+# preprints are deposited by the ACS) does not set 'institution' at all - it
+# can only be recognized by its DOI prefix. DOI prefixes aren't fully stable
+# either (bioRxiv/medRxiv moved from 10.1101 to 10.64898 in Dec 2025), so
+# institution-name matching is used wherever a server actually provides it,
+# falling back to a known DOI prefix only for servers that don't.
+PREPRINT_SERVER_DOI_PREFIXES = {
+    "chemrxiv": "10.26434/",
+}
+
+
+def _match_preprint_server(pub: Dict[str, Any], server_key: str) -> bool:
+    """Check whether a CrossRef posted-content item belongs to the given
+    preprint server (server_key is already lowercased)."""
+    doi_prefix = PREPRINT_SERVER_DOI_PREFIXES.get(server_key)
+    if doi_prefix:
+        return (pub.get("DOI") or "").lower().startswith(doi_prefix)
+
+    institution = pub.get("institution") or [{}]
+    institution_name = institution[0].get("name", "").strip().lower()
+    return institution_name == server_key
+
+
+def search_preprints_by_keywords(
+    keywords: List[str],
+    start_end_date: Tuple[str, str],
+    servers: List[str],
+    rows: int = 100,
+    email: str = None
+) -> List[Dict[str, Any]]:
+    """
+    Search CrossRef for preprints (type: posted-content) matching keywords,
+    restricted to the given preprint servers.
+
+    Args:
+        keywords: List of search keywords
+        start_end_date: Date range tuple
+        servers: Preprint server names to include (e.g. "bioRxiv", "medRxiv",
+            "chemRxiv"); matched case-insensitively, see _match_preprint_server
+        rows: Maximum results per keyword
+        email: Contact email for API requests
+
+    Returns:
+        List of publication dictionaries, each tagged with Source set to
+        the matched server's display name (as given in `servers`)
+    """
+    if not keywords or not servers:
+        return []
+
+    # Preserve original casing for display (Source), key matching on lowercase
+    server_display_names = {s.strip().lower(): s.strip() for s in servers if s and s.strip()}
+    start_date, end_date = start_end_date
+    client = CrossRefClient(email=email)
+    all_publications = []
+
+    print(f"  Searching preprint servers ({', '.join(servers)}) by keywords...")
+
+    for i, keyword in enumerate(keywords):
+        if i > 0:
+            time.sleep(RATE_LIMIT_DELAY)
+
+        print_progress(i + 1, len(keywords), "Preprint keyword search")
+
+        try:
+            publications = client.search_by_query(
+                query=keyword,
+                start_date=start_date,
+                end_date=end_date,
+                rows=rows,
+                filters={"type": "posted-content"}
+            )
+
+            for pub in publications:
+                matched_key = next(
+                    (key for key in server_display_names if _match_preprint_server(pub, key)),
+                    None
+                )
+                if not matched_key:
+                    continue
+                pub["Source"] = server_display_names[matched_key]
+                pub["search_keyword"] = keyword
+                all_publications.append(pub)
+
+        except Exception as e:
+            print(f"   Unexpected error for preprint keyword '{keyword}': {e}")
+            continue
+
+    unique_publications = remove_duplicate_dois(all_publications)
+
+    print(f"  Preprint search completed: {len(unique_publications)} unique papers found")
+    return unique_publications
+
+
 def remove_duplicate_dois(publications: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     Remove duplicate publications based on DOI.

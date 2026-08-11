@@ -1,4 +1,11 @@
 email: your.email@institution.edu
 lookup_frequency: 1 week
-tool_version: 3.7.0
-update_date: '20260126'
+tool_version: 3.9.0
+update_date: '20260811'
+# Optional: search preprint servers (bioRxiv, medRxiv, chemRxiv, ...) using the
+# same keywords as PubMed. Matched against CrossRef's 'institution' field, so
+# names should match how the server identifies itself there. Omit or leave
+# empty to skip preprint search entirely.
+preprint_servers:
+- bioRxiv
+- medRxiv

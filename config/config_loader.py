@@ -104,6 +104,13 @@ def validate_config(config: Dict[str, Any]) -> None:
     if not all(isinstance(t, str) and t.strip() for t in topics):
         raise ValueError("topics entries must be non-empty strings")
     
+    preprint_servers = config.get('preprint_servers', [])
+    if preprint_servers:
+        if not isinstance(preprint_servers, list) or not all(
+            isinstance(s, str) and s.strip() for s in preprint_servers
+        ):
+            raise ValueError("preprint_servers must be a list of non-empty strings")
+
     date_ranges = config.get('date_ranges', [])
     if date_ranges:
         if not isinstance(date_ranges, list):
@@ -162,7 +169,8 @@ def load_config(config_dir: str = 'config') -> Tuple[Dict[str, Any], Dict[str, i
         'authors': raw_authors,
         'named_authors': named_authors,
         'orcids': orcids,
-        'date_ranges': dates.get('date_ranges', [])
+        'date_ranges': dates.get('date_ranges', []),
+        'preprint_servers': meta.get('preprint_servers', [])
     }
     
     # Validate configuration
@@ -178,6 +186,8 @@ def load_config(config_dir: str = 'config') -> Tuple[Dict[str, Any], Dict[str, i
     print(f"  Keywords: {len(config_dict['topics'])} configured")
     print(f"  Authors/ORCIDs: {len(config_dict['orcids'])} configured")
     print(f"  Date ranges: {len(config_dict['date_ranges'])} configured")
+    if config_dict['preprint_servers']:
+        print(f"  Preprint servers: {', '.join(config_dict['preprint_servers'])}")
     
     return config_dict, keyword_frequency_dict
 
@@ -195,7 +205,8 @@ def create_sample_config(config_dir: str = 'config') -> None:
     meta_sample = {
         'email': 'your.email@institution.edu',
         'lookup_frequency': '1 week',
-        'update_date': '20250815'
+        'update_date': '20250815',
+        'preprint_servers': ['bioRxiv', 'medRxiv']
     }
     
     # Sample journals.yaml
