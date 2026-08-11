@@ -2,3 +2,9 @@ topics:
   - CRISPR
   - protein engineering
   - bioinorganic chemistry
+# Optional: narrower keyword list used only for preprint server search (see
+# preprint_servers in meta.yaml). Preprint full-text search is much less
+# targeted than PubMed's indexed search, so a broad `topics` list can produce
+# excessive volume there. Omit to just reuse `topics` for preprints too.
+# preprint_topics:
+#   - bioinorganic chemistry

@@ -70,6 +70,22 @@ preprint_servers:
 
 This runs alongside the normal PubMed keyword search (only in `--mode keywords`/`both`) via CrossRef's `posted-content` records, since bioRxiv/medRxiv/chemRxiv all register their DOIs with CrossRef. Results are tagged with the matched server as their `Source`/`Journal`. Omit `preprint_servers` (or leave it empty) to skip preprint search entirely — it's off by default.
 
+Preprint full-text search is much less targeted than PubMed's indexed search, so a broad `topics` list can return a lot of noise. Set an optional `preprint_topics` list in `keywords.yaml` to use a narrower keyword set just for preprint search, while keeping the full `topics` list for PubMed:
+
+```yaml
+topics:
+- CRISPR
+- protein engineering
+- bioinorganic chemistry
+- ... (broader list, used for PubMed)
+
+preprint_topics:
+- bioinorganic chemistry
+- ... (narrower list, used only for preprint search)
+```
+
+Omit `preprint_topics` to just reuse `topics` for preprints too.
+
 
 
 

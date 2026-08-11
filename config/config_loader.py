@@ -104,6 +104,10 @@ def validate_config(config: Dict[str, Any]) -> None:
     if not all(isinstance(t, str) and t.strip() for t in topics):
         raise ValueError("topics entries must be non-empty strings")
     
+    preprint_topics = config.get('preprint_topics', [])
+    if preprint_topics and not all(isinstance(t, str) and t.strip() for t in preprint_topics):
+        raise ValueError("preprint_topics entries must be non-empty strings")
+
     preprint_servers = config.get('preprint_servers', [])
     if preprint_servers:
         if not isinstance(preprint_servers, list) or not all(
@@ -166,6 +170,7 @@ def load_config(config_dir: str = 'config') -> Tuple[Dict[str, Any], Dict[str, i
         'update_date': meta.get('update_date', 'N/A'),
         'journals': journals.get('journals', []),
         'topics': topics.get('topics', []),
+        'preprint_topics': topics.get('preprint_topics') or topics.get('topics', []),
         'authors': raw_authors,
         'named_authors': named_authors,
         'orcids': orcids,
@@ -188,6 +193,7 @@ def load_config(config_dir: str = 'config') -> Tuple[Dict[str, Any], Dict[str, i
     print(f"  Date ranges: {len(config_dict['date_ranges'])} configured")
     if config_dict['preprint_servers']:
         print(f"  Preprint servers: {', '.join(config_dict['preprint_servers'])}")
+        print(f"  Preprint keywords: {len(config_dict['preprint_topics'])} configured")
     
     return config_dict, keyword_frequency_dict
 

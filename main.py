@@ -128,7 +128,7 @@ def search_publications(
         if config.get('preprint_servers'):
             print('Searching preprint servers by keywords...')
             preprint_papers = search_preprints_by_keywords(
-                keywords=config['topics'],
+                keywords=config.get('preprint_topics') or config['topics'],
                 start_end_date=date_range,
                 servers=config['preprint_servers'],
                 email=config.get('email')
