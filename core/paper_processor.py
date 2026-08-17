@@ -651,7 +651,8 @@ def extract_crossref_paper_info(paper: Dict[str, Any]) -> Dict[str, Any]:
         "Institution": ["No institution listed (CrossRef)"],  # CrossRef rarely has institutions
         "Abstract": paper.get("abstract", "No abstract available"),
         "Date": parse_api_date(paper.get("issued"), "crossref"),
-        "Source": paper.get("Source", "crossref")
+        "Source": paper.get("Source", "crossref"),
+        "IsPreprint": bool(paper.get("IsPreprint", False))
     }
     
     return component

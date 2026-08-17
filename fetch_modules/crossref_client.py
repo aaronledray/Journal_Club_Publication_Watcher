@@ -412,6 +412,7 @@ def search_preprints_by_keywords(
                 if not matched_key:
                     continue
                 pub["Source"] = server_display_names[matched_key]
+                pub["IsPreprint"] = True
                 pub["search_keyword"] = keyword
                 all_publications.append(pub)
 
