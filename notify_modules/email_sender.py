@@ -68,7 +68,10 @@ def build_plaintext_body(components: List[Dict[str, Any]], date_range: Tuple[str
     published, preprints = _split_published_and_preprints(components)
 
     def render_section(title: str, items: List[Dict[str, Any]]) -> None:
-        lines.append(f"=== {title} ({len(items)}) ===")
+        banner = "#" * 60
+        lines.append(banner)
+        lines.append(f"# {title.upper()} ({len(items)})")
+        lines.append(banner)
         lines.append("")
         for i, c in enumerate(sort_papers_by_date(items, reverse=True), 1):
             lines.extend([
@@ -80,6 +83,7 @@ def build_plaintext_body(components: List[Dict[str, Any]], date_range: Tuple[str
             if link != "No link available":
                 lines.append(f"   {link}")
             lines.append("")
+        lines.append("")
 
     if published:
         render_section("Published Articles", published)
@@ -107,6 +111,19 @@ def _render_html_cards(items: List[Dict[str, Any]]) -> str:
     return "".join(cards)
 
 
+def _section_banner(title: str, count: int, color: str) -> str:
+    return f"""
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:32px 0 16px 0;">
+      <tr>
+        <td style="background-color:{color};padding:12px 16px;border-radius:6px;">
+          <span style="color:#ffffff;font-size:16px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;">
+            {title} ({count})
+          </span>
+        </td>
+      </tr>
+    </table>"""
+
+
 def build_html_body(components: List[Dict[str, Any]], date_range: Tuple[str, str]) -> str:
     start, end = date_range
     if not components:
@@ -115,14 +132,17 @@ def build_html_body(components: List[Dict[str, Any]], date_range: Tuple[str, str
         published, preprints = _split_published_and_preprints(components)
         sections = []
         if published:
-            sections.append(f"""
-            <h3 style="margin:24px 0 8px 0;color:#222;">Published Articles ({len(published)})</h3>
-            {_render_html_cards(published)}""")
+            sections.append(
+                _section_banner("Published Articles", len(published), "#1a5276")
+                + _render_html_cards(published)
+            )
         if preprints:
-            sections.append(f"""
-            <h3 style="margin:24px 0 8px 0;color:#222;">Preprints ({len(preprints)})</h3>
-            {_render_html_cards(preprints)}""")
-        body = "".join(sections)
+            sections.append(
+                _section_banner("Preprints", len(preprints), "#b9770e")
+                + _render_html_cards(preprints)
+            )
+        # Thick visual divider between the two sections, when both are present
+        body = ('<div style="border-top:5px solid #d5d8dc;margin:8px 0;"></div>').join(sections)
 
     return f"""<html><body style="font-family:-apple-system,Helvetica,Arial,sans-serif;color:#222;">
       <h2 style="margin-bottom:4px;">Journal Watcher weekly digest</h2>
