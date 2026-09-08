@@ -9,9 +9,38 @@ twice, months apart. CrossRef exposes preprint/published relations (e.g.
 and either suppress the second notification or annotate it (e.g. "this preprint is
 now published in JACS").
 
-## Smarter digest ranking/grouping
+## Smarter digest ranking
 
-Weekly digest volume can run 100+ items, which is a lot to scan over coffee. Group
-the email by topic/source, or surface papers matching multiple keywords first as a
+Done: papers are now split into Published Articles / Preprints sections (visually
+distinct banners + divider) and grouped by journal within each section, ordered by
+paper count. Still open: surfacing papers that match multiple keywords first as a
 relevance signal — `search_keyword`/keyword frequency data already exists per paper
 and could drive this.
+
+## Attach the interactive HTML dashboard to the email
+
+`write_html_dashboard()` (in `output_modules/html_builder.py`) already produces a
+sortable/searchable/theme-toggling dashboard as `publications.html` — likely a
+better read than the email body alone. Discussed but not built. Notes for whoever
+picks this up:
+
+- Mechanically simple: add a `MIMEApplication` (or `MIMEText(..., 'html')` with
+  `Content-Disposition: attachment`) part to the `MIMEMultipart` message built in
+  `notify_modules/email_sender.py::send_digest_email()`. File sizes for a
+  ~50-130 paper digest are a few hundred KB, well under Gmail's 25MB limit. The
+  dashboard's JS/CSS loads from CDN, so it still works opened locally given
+  internet access.
+- Structural wrinkle: `main.py` currently sends the email *before*
+  `generate_outputs()` runs (deliberately - so a failed send can't silently drop
+  papers from future digests, since seen-state is only marked after a successful
+  send). Attaching the dashboard means either building the HTML earlier (before
+  the notify step) or moving the email send after output generation - needs
+  correct sequencing either way.
+- Design decision needed: should the attached dashboard scope to just the new
+  (unseen) papers reported in that email, or the full week's results including
+  already-seen ones (what `generate_outputs()` normally builds)? Leaning toward
+  "new only" to match the email's intent, but it's a product call.
+- Considered and rejected for now: hosting the HTML via GitHub Pages and emailing
+  a link instead of attaching. Avoids attachment bloat over time, but adds a
+  public-hosting wrinkle for what's otherwise a private personal digest. Plain
+  attachment is the better fit unless that changes.
