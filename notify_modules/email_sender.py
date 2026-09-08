@@ -58,6 +58,18 @@ def _split_published_and_preprints(
     return published, preprints
 
 
+def _group_by_journal(items: List[Dict[str, Any]]) -> List[Tuple[str, List[Dict[str, Any]]]]:
+    """Group items by Journal, each group sorted newest-first, groups ordered
+    by paper count descending (most active journal first), then name."""
+    groups: Dict[str, List[Dict[str, Any]]] = {}
+    for c in items:
+        journal = c.get("Journal") or "Unknown journal"
+        groups.setdefault(journal, []).append(c)
+
+    ordered_journals = sorted(groups.keys(), key=lambda j: (-len(groups[j]), j.lower()))
+    return [(journal, sort_papers_by_date(groups[journal], reverse=True)) for journal in ordered_journals]
+
+
 def build_plaintext_body(components: List[Dict[str, Any]], date_range: Tuple[str, str]) -> str:
     start, end = date_range
     lines = [f"Journal Watcher weekly digest ({start} to {end})", ""]
@@ -73,16 +85,19 @@ def build_plaintext_body(components: List[Dict[str, Any]], date_range: Tuple[str
         lines.append(f"# {title.upper()} ({len(items)})")
         lines.append(banner)
         lines.append("")
-        for i, c in enumerate(sort_papers_by_date(items, reverse=True), 1):
-            lines.extend([
-                f"{i}. {c.get('Title', 'No title available')}",
-                f"   {_authors_str(c.get('Authors'))}",
-                f"   {c.get('Journal', 'Unknown journal')} — {c.get('Date', 'Unknown date')}",
-            ])
-            link = c.get("Link", "No link available")
-            if link != "No link available":
-                lines.append(f"   {link}")
+        for journal, journal_items in _group_by_journal(items):
+            lines.append(f"--- {journal} ({len(journal_items)}) ---")
             lines.append("")
+            for i, c in enumerate(journal_items, 1):
+                lines.extend([
+                    f"{i}. {c.get('Title', 'No title available')}",
+                    f"   {_authors_str(c.get('Authors'))}",
+                    f"   {c.get('Date', 'Unknown date')}",
+                ])
+                link = c.get("Link", "No link available")
+                if link != "No link available":
+                    lines.append(f"   {link}")
+                lines.append("")
         lines.append("")
 
     if published:
@@ -93,22 +108,31 @@ def build_plaintext_body(components: List[Dict[str, Any]], date_range: Tuple[str
     return "\n".join(lines)
 
 
-def _render_html_cards(items: List[Dict[str, Any]]) -> str:
-    cards = []
-    for c in sort_papers_by_date(items, reverse=True):
-        title = c.get("Title", "No title available")
-        link = c.get("Link", "No link available")
-        title_html = (
-            f'<a href="{link}" style="color:#1a5276;text-decoration:none;">{title}</a>'
-            if link != "No link available" else title
-        )
-        cards.append(f"""
-        <div style="margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid #e0e0e0;">
-          <div style="font-size:16px;font-weight:600;margin-bottom:4px;">{title_html}</div>
-          <div style="font-size:13px;color:#444;">{_authors_str(c.get('Authors'))}</div>
-          <div style="font-size:13px;color:#777;">{c.get('Journal', 'Unknown journal')} &middot; {c.get('Date', 'Unknown date')} &middot; {c.get('Source', '')}</div>
-        </div>""")
-    return "".join(cards)
+def _render_html_card(c: Dict[str, Any]) -> str:
+    title = c.get("Title", "No title available")
+    link = c.get("Link", "No link available")
+    title_html = (
+        f'<a href="{link}" style="color:#1a5276;text-decoration:none;">{title}</a>'
+        if link != "No link available" else title
+    )
+    return f"""
+    <div style="margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid #e0e0e0;">
+      <div style="font-size:16px;font-weight:600;margin-bottom:4px;">{title_html}</div>
+      <div style="font-size:13px;color:#444;">{_authors_str(c.get('Authors'))}</div>
+      <div style="font-size:13px;color:#777;">{c.get('Date', 'Unknown date')} &middot; {c.get('Source', '')}</div>
+    </div>"""
+
+
+def _render_html_journal_groups(items: List[Dict[str, Any]]) -> str:
+    groups = []
+    for journal, journal_items in _group_by_journal(items):
+        cards = "".join(_render_html_card(c) for c in journal_items)
+        groups.append(f"""
+        <div style="font-size:14px;font-weight:700;color:#555;margin:16px 0 10px 0;padding-bottom:4px;border-bottom:2px solid #ccc;">
+          {journal} ({len(journal_items)})
+        </div>
+        {cards}""")
+    return "".join(groups)
 
 
 def _section_banner(title: str, count: int, color: str) -> str:
@@ -134,12 +158,12 @@ def build_html_body(components: List[Dict[str, Any]], date_range: Tuple[str, str
         if published:
             sections.append(
                 _section_banner("Published Articles", len(published), "#1a5276")
-                + _render_html_cards(published)
+                + _render_html_journal_groups(published)
             )
         if preprints:
             sections.append(
                 _section_banner("Preprints", len(preprints), "#b9770e")
-                + _render_html_cards(preprints)
+                + _render_html_journal_groups(preprints)
             )
         # Thick visual divider between the two sections, when both are present
         body = ('<div style="border-top:5px solid #d5d8dc;margin:8px 0;"></div>').join(sections)
