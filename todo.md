@@ -2,6 +2,12 @@
 
 ## Preprint → published-version linking
 
+In progress: CrossRef relation metadata is now carried into paper components;
+related DOIs are treated as aliases by email seen-state tracking, and preprints
+show a published-version DOI when CrossRef provides one. Remaining work is to
+add broader fixture coverage and decide whether non-email outputs should also
+surface the relationship.
+
 A bioRxiv/medRxiv/chemRxiv preprint and its eventual journal publication (e.g. JACS)
 are separate DOIs, so the weekly digest can notify about the same underlying paper
 twice, months apart. CrossRef exposes preprint/published relations (e.g.
@@ -18,6 +24,10 @@ relevance signal — `search_keyword`/keyword frequency data already exists per 
 and could drive this.
 
 ## Attach the interactive HTML dashboard to the email
+
+In progress: generate a new-only dashboard in a temporary directory, attach
+the HTML to the digest, and remove the temporary files after sending. The
+existing full-result dashboard remains unchanged.
 
 `write_html_dashboard()` (in `output_modules/html_builder.py`) already produces a
 sortable/searchable/theme-toggling dashboard as `publications.html` — likely a

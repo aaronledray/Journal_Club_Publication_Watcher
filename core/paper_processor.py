@@ -85,6 +85,58 @@ def extract_crossref_title(paper: Dict[str, Any]) -> str:
         return "No title available"
 
 
+def _clean_doi(value: Any) -> str:
+    """Return a normalized DOI from a DOI value or DOI URL."""
+    if not isinstance(value, str):
+        return ""
+    doi = value.strip()
+    for prefix in ("https://doi.org/", "http://doi.org/", "doi:"):
+        if doi.lower().startswith(prefix):
+            doi = doi[len(prefix):]
+            break
+    return doi.strip().rstrip(".").lower()
+
+
+def extract_crossref_doi(paper: Dict[str, Any]) -> str:
+    """Extract a normalized DOI from a CrossRef work."""
+    return _clean_doi(paper.get("DOI") or paper.get("doi"))
+
+
+def extract_crossref_related_dois(paper: Dict[str, Any]) -> Dict[str, List[str]]:
+    """Extract DOI relationships from CrossRef's ``relation`` object.
+
+    CrossRef relation entries are objects containing an ``id`` field. Keep the
+    relationship type so downstream consumers can distinguish the published
+    version from other related works.
+    """
+    related: Dict[str, List[str]] = {}
+    relations = paper.get("relation") or {}
+    if not isinstance(relations, dict):
+        return related
+
+    for relation_type, entries in relations.items():
+        if not isinstance(entries, list):
+            entries = [entries]
+        dois = []
+        for entry in entries:
+            value = entry.get("id") if isinstance(entry, dict) else entry
+            doi = _clean_doi(value)
+            if doi and doi not in dois:
+                dois.append(doi)
+        if dois:
+            related[relation_type] = dois
+    return related
+
+
+def extract_crossref_published_dois(paper: Dict[str, Any]) -> List[str]:
+    """Return DOI(s) for the journal version related to a CrossRef work."""
+    relations = extract_crossref_related_dois(paper)
+    published = list(relations.get("is-preprint-of", []))
+    # Some records only expose the reciprocal relation on the article side.
+    # Retain it as related metadata; it is useful for cross-run deduplication.
+    return published
+
+
 
 
 
@@ -642,10 +694,17 @@ def extract_crossref_paper_info(paper: Dict[str, Any]) -> Dict[str, Any]:
     Returns:
         Standardized paper component dictionary
     """
+    related_dois = extract_crossref_related_dois(paper)
+    doi = extract_crossref_doi(paper)
+    published_dois = extract_crossref_published_dois(paper)
+
     component = {
         "Title": extract_crossref_title(paper),
         "Journal": extract_crossref_journal(paper),
         "Link": paper.get("URL", "No link available"),
+        "DOI": doi,
+        "RelatedDOIs": related_dois,
+        "PublishedDOIs": published_dois,
         "Authors": extract_crossref_authors(paper),
         "Keywords": ["No keywords (CrossRef)"],  # CrossRef rarely has keywords
         "Institution": ["No institution listed (CrossRef)"],  # CrossRef rarely has institutions
@@ -787,7 +846,3 @@ if __name__ == "__main__":
     print(f"Validation issues: {issues}")
     
     print("Paper processor test completed.")
-
-
-
-    

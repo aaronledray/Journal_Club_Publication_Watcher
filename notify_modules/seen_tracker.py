@@ -25,24 +25,53 @@ def _slugify_title(title: str) -> str:
     return slug or "untitled"
 
 
-def get_component_id(component: Dict[str, Any]) -> str:
-    """
-    Stable identity key for a paper component dict, preferring:
-      1. component['PMID']       -> "pmid:<id>"
-      2. DOI parsed out of Link  -> "doi:<lowercased doi>"
-      3. slugified Title         -> "title:<slug>"
+def _normalize_doi(value: Any) -> str:
+    """Normalize a DOI or DOI URL for stable identity comparisons."""
+    if not isinstance(value, str):
+        return ""
+    doi = value.strip().lower()
+    for prefix in ("https://doi.org/", "http://doi.org/", "doi:"):
+        if doi.startswith(prefix):
+            doi = doi[len(prefix):]
+            break
+    return doi.strip().rstrip(".")
+
+
+def _component_dois(component: Dict[str, Any]) -> List[str]:
+    """Return the component DOI plus any CrossRef-related DOI aliases."""
+    dois = []
+    for value in (component.get("DOI"), component.get("Link")):
+        doi = _normalize_doi(value)
+        if "doi.org/" in doi:
+            doi = doi.split("doi.org/", 1)[1].strip("/")
+        if doi and doi not in dois:
+            dois.append(doi)
+
+    related = component.get("RelatedDOIs") or {}
+    if isinstance(related, dict):
+        values = [value for group in related.values() for value in (group if isinstance(group, list) else [group])]
+        for value in values:
+            doi = _normalize_doi(value)
+            if doi and doi not in dois:
+                dois.append(doi)
+    return dois
+
+
+def get_component_ids(component: Dict[str, Any]) -> List[str]:
+    """Return all identity keys, including CrossRef relation aliases.
+
+    A PMID remains the primary key when present, but DOI keys are also kept so
+    a PubMed record can match a CrossRef preprint/publication relationship.
     """
     pmid = (component.get("PMID") or "").strip()
-    if pmid:
-        return f"pmid:{pmid}"
+    ids = [f"pmid:{pmid}"] if pmid else []
+    ids.extend(f"doi:{doi}" for doi in _component_dois(component) if f"doi:{doi}" not in ids)
+    return ids or [f"title:{_slugify_title(component.get('Title', ''))}"]
 
-    link = (component.get("Link") or "").strip().lower()
-    if "doi.org/" in link:
-        doi = link.split("doi.org/", 1)[1].strip("/")
-        if doi:
-            return f"doi:{doi}"
 
-    return f"title:{_slugify_title(component.get('Title', ''))}"
+def get_component_id(component: Dict[str, Any]) -> str:
+    """Return the primary identity key for compatibility with existing callers."""
+    return get_component_ids(component)[0]
 
 
 def load_seen_state(path: str = DEFAULT_SEEN_STATE_PATH) -> Dict[str, Any]:
@@ -62,14 +91,14 @@ def load_seen_state(path: str = DEFAULT_SEEN_STATE_PATH) -> Dict[str, Any]:
 
 
 def filter_unseen(components: List[Dict[str, Any]], seen_state: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """Return only components whose identity key is not already in seen_state['seen']."""
+    """Return components whose primary or related identity is not seen."""
     seen_ids = seen_state.get("seen", {})
     unseen, batch_seen = [], set()
     for component in components:
-        cid = get_component_id(component)
-        if cid not in seen_ids and cid not in batch_seen:
+        component_ids = get_component_ids(component)
+        if not any(cid in seen_ids or cid in batch_seen for cid in component_ids):
             unseen.append(component)
-            batch_seen.add(cid)
+            batch_seen.update(component_ids)
     return unseen
 
 
@@ -79,7 +108,8 @@ def mark_seen(components: List[Dict[str, Any]], seen_state: Dict[str, Any]) -> D
     seen_ids = seen_state.setdefault("seen", {})
     seen_state.setdefault("version", STATE_VERSION)
     for component in components:
-        seen_ids[get_component_id(component)] = now_iso
+        for cid in get_component_ids(component):
+            seen_ids[cid] = now_iso
     return seen_state
 
 

@@ -8,7 +8,9 @@ secrets at run time): GMAIL_ADDRESS, GMAIL_APP_PASSWORD, RECIPIENT_EMAIL.
 import os
 import smtplib
 from email.mime.multipart import MIMEMultipart
+from email.mime.application import MIMEApplication
 from email.mime.text import MIMEText
+from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 from core.paper_processor import sort_papers_by_date
@@ -46,6 +48,14 @@ def _authors_str(authors: List[str], limit: int = 4) -> str:
     if len(authors) > limit:
         return f"{', '.join(authors[:limit])}, et al."
     return ", ".join(authors)
+
+
+def _published_version_note(component: Dict[str, Any]) -> str:
+    """Format a concise note when CrossRef links a preprint to a publication."""
+    dois = component.get("PublishedDOIs") or []
+    if not dois:
+        return ""
+    return f"Published version: https://doi.org/{dois[0]}"
 
 
 def _split_published_and_preprints(
@@ -97,6 +107,9 @@ def build_plaintext_body(components: List[Dict[str, Any]], date_range: Tuple[str
                 link = c.get("Link", "No link available")
                 if link != "No link available":
                     lines.append(f"   {link}")
+                published_note = _published_version_note(c)
+                if published_note:
+                    lines.append(f"   {published_note}")
                 lines.append("")
         lines.append("")
 
@@ -120,6 +133,7 @@ def _render_html_card(c: Dict[str, Any]) -> str:
       <div style="font-size:16px;font-weight:600;margin-bottom:4px;">{title_html}</div>
       <div style="font-size:13px;color:#444;">{_authors_str(c.get('Authors'))}</div>
       <div style="font-size:13px;color:#777;">{c.get('Date', 'Unknown date')} &middot; {c.get('Source', '')}</div>
+      {f'<div style="font-size:13px;color:#777;">Published version: <a href="https://doi.org/{dois[0]}">https://doi.org/{dois[0]}</a></div>' if (dois := c.get('PublishedDOIs') or []) else ''}
     </div>"""
 
 
@@ -175,7 +189,11 @@ def build_html_body(components: List[Dict[str, Any]], date_range: Tuple[str, str
     </body></html>"""
 
 
-def send_digest_email(new_components: List[Dict[str, Any]], date_range: Tuple[str, str]) -> None:
+def send_digest_email(
+    new_components: List[Dict[str, Any]],
+    date_range: Tuple[str, str],
+    html_attachment_path: str = None,
+) -> None:
     """
     Always sends an email - either the digest of new papers, or a short
     "no new papers this week" notice. Raises on missing env vars or SMTP
@@ -189,6 +207,17 @@ def send_digest_email(new_components: List[Dict[str, Any]], date_range: Tuple[st
     msg["To"] = creds["RECIPIENT_EMAIL"]
     msg.attach(MIMEText(build_plaintext_body(new_components, date_range), "plain"))
     msg.attach(MIMEText(build_html_body(new_components, date_range), "html"))
+
+    if html_attachment_path:
+        attachment_path = Path(html_attachment_path)
+        with attachment_path.open("rb") as f:
+            attachment = MIMEApplication(f.read(), _subtype="html")
+        attachment.add_header(
+            "Content-Disposition",
+            "attachment",
+            filename="publications.html",
+        )
+        msg.attach(attachment)
 
     print(f'   Sending email via {SMTP_HOST}:{SMTP_PORT} to {creds["RECIPIENT_EMAIL"]}...')
     with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT) as server:

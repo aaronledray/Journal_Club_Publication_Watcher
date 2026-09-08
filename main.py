@@ -11,6 +11,7 @@ See CHANGELOG.md for version history.
 import argparse
 import json
 import os
+import tempfile
 import webbrowser
 from datetime import datetime
 from pathlib import Path
@@ -227,7 +228,9 @@ def generate_outputs(
 def notify_new_papers_by_email(
     components_all: List[Dict],
     date_range: Tuple[str, str],
-    seen_state_path: str
+    seen_state_path: str,
+    config: Dict,
+    keyword_frequencies: Dict[str, int],
 ) -> None:
     """
     Filter combined components against seen-state, email unseen ones, then
@@ -239,7 +242,22 @@ def notify_new_papers_by_email(
     new_components = filter_unseen(components_all, seen_state)
     print(f'   {len(new_components)} new paper(s) since last notified run')
 
-    send_digest_email(new_components, date_range)
+    # Build the attachment from only the papers in this digest. Keep it in a
+    # temporary directory so the normal on-disk dashboard remains the full
+    # search result and no personal report is left behind by the email step.
+    with tempfile.TemporaryDirectory(prefix="journal-watcher-digest-") as temp_dir:
+        html_path = Path(temp_dir) / "publications.html"
+        json_path = Path(temp_dir) / "results.json"
+        write_html_dashboard(
+            start_end_date=date_range,
+            config_file_dict=config,
+            components=new_components,
+            keyword_frequency_dict=keyword_frequencies,
+            html_name=str(html_path),
+            json_dump_path=str(json_path),
+            auto_mode=True,
+        )
+        send_digest_email(new_components, date_range, str(html_path))
 
     seen_state = mark_seen(new_components, seen_state)
     seen_state = prune_old_entries(seen_state)
@@ -285,7 +303,13 @@ def main() -> None:
 
         if args.notify_email:
             components_all = combine_components(components_keyword, components_orcid)
-            notify_new_papers_by_email(components_all, date_range, args.seen_state_path)
+            notify_new_papers_by_email(
+                components_all,
+                date_range,
+                args.seen_state_path,
+                config,
+                keyword_frequencies,
+            )
 
         if not (components_keyword or components_orcid):
             print("No papers found matching your criteria.")
