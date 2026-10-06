@@ -7,13 +7,13 @@ secrets at run time): GMAIL_ADDRESS, GMAIL_APP_PASSWORD, RECIPIENT_EMAIL.
 
 import os
 import smtplib
+from html import escape
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
 from email.mime.text import MIMEText
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
-
-from core.paper_processor import sort_papers_by_date
+from urllib.parse import urlsplit
 
 SMTP_HOST = "smtp.gmail.com"
 SMTP_PORT = 465
@@ -68,16 +68,62 @@ def _split_published_and_preprints(
     return published, preprints
 
 
+def _matched_keywords(component: Dict[str, Any]) -> List[str]:
+    keywords = component.get("MatchedKeywords") or []
+    if isinstance(keywords, str):
+        keywords = [keywords]
+    unique = []
+    seen = set()
+    for keyword in keywords:
+        if not isinstance(keyword, str) or not keyword.strip():
+            continue
+        keyword = keyword.strip()
+        normalized = keyword.casefold()
+        if normalized not in seen:
+            seen.add(normalized)
+            unique.append(keyword)
+    return unique
+
+
+def _date_sort_key(component: Dict[str, Any]) -> Tuple[int, int, int]:
+    """Return a sortable YYYY/MM/DD tuple; unknown dates sort last."""
+    date_value = component.get("Date", "")
+    if not isinstance(date_value, str):
+        return (0, 0, 0)
+
+    parts = date_value.replace("-", "/").split("/")
+    try:
+        year = int(parts[0])
+        month = int(parts[1]) if len(parts) > 1 else 1
+        day = int(parts[2]) if len(parts) > 2 else 1
+        return (year, month, day)
+    except (ValueError, IndexError):
+        return (0, 0, 0)
+
+
 def _group_by_journal(items: List[Dict[str, Any]]) -> List[Tuple[str, List[Dict[str, Any]]]]:
-    """Group items by Journal, each group sorted newest-first, groups ordered
-    by paper count descending (most active journal first), then name."""
+    """Keep journal groups ordered by volume; rank papers by keyword matches,
+    then publication date within each group."""
     groups: Dict[str, List[Dict[str, Any]]] = {}
     for c in items:
         journal = c.get("Journal") or "Unknown journal"
         groups.setdefault(journal, []).append(c)
 
     ordered_journals = sorted(groups.keys(), key=lambda j: (-len(groups[j]), j.lower()))
-    return [(journal, sort_papers_by_date(groups[journal], reverse=True)) for journal in ordered_journals]
+    return [
+        (
+            journal,
+            sorted(
+                groups[journal],
+                key=lambda component: (
+                    len(_matched_keywords(component)),
+                    _date_sort_key(component),
+                ),
+                reverse=True,
+            ),
+        )
+        for journal in ordered_journals
+    ]
 
 
 def build_plaintext_body(components: List[Dict[str, Any]], date_range: Tuple[str, str]) -> str:
@@ -107,6 +153,9 @@ def build_plaintext_body(components: List[Dict[str, Any]], date_range: Tuple[str
                 link = c.get("Link", "No link available")
                 if link != "No link available":
                     lines.append(f"   {link}")
+                matched_keywords = _matched_keywords(c)
+                if matched_keywords:
+                    lines.append(f"   Matched search terms: {', '.join(matched_keywords)}")
                 published_note = _published_version_note(c)
                 if published_note:
                     lines.append(f"   {published_note}")
@@ -122,18 +171,29 @@ def build_plaintext_body(components: List[Dict[str, Any]], date_range: Tuple[str
 
 
 def _render_html_card(c: Dict[str, Any]) -> str:
-    title = c.get("Title", "No title available")
-    link = c.get("Link", "No link available")
+    title = escape(str(c.get("Title", "No title available")))
+    raw_link = str(c.get("Link", "No link available"))
+    parsed_link = urlsplit(raw_link)
+    link = escape(raw_link, quote=True) if parsed_link.scheme in {"http", "https"} else ""
     title_html = (
         f'<a href="{link}" style="color:#1a5276;text-decoration:none;">{title}</a>'
-        if link != "No link available" else title
+        if link else title
     )
+    authors = escape(_authors_str(c.get('Authors')))
+    date = escape(str(c.get('Date', 'Unknown date')))
+    source = escape(str(c.get('Source', '')))
+    doi_list = c.get('PublishedDOIs') or []
+    published_link = ""
+    if doi_list:
+        doi = escape(str(doi_list[0]), quote=True)
+        published_link = f'<div style="font-size:13px;color:#777;">Published version: <a href="https://doi.org/{doi}">https://doi.org/{doi}</a></div>'
     return f"""
     <div style="margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid #e0e0e0;">
       <div style="font-size:16px;font-weight:600;margin-bottom:4px;">{title_html}</div>
-      <div style="font-size:13px;color:#444;">{_authors_str(c.get('Authors'))}</div>
-      <div style="font-size:13px;color:#777;">{c.get('Date', 'Unknown date')} &middot; {c.get('Source', '')}</div>
-      {f'<div style="font-size:13px;color:#777;">Published version: <a href="https://doi.org/{dois[0]}">https://doi.org/{dois[0]}</a></div>' if (dois := c.get('PublishedDOIs') or []) else ''}
+      <div style="font-size:13px;color:#444;">{authors}</div>
+      <div style="font-size:13px;color:#777;">{date} &middot; {source}</div>
+      {f'<div style="font-size:13px;color:#777;">Matched search terms: {", ".join(escape(keyword) for keyword in matched_keywords)}</div>' if (matched_keywords := _matched_keywords(c)) else ''}
+      {published_link}
     </div>"""
 
 
@@ -143,7 +203,7 @@ def _render_html_journal_groups(items: List[Dict[str, Any]]) -> str:
         cards = "".join(_render_html_card(c) for c in journal_items)
         groups.append(f"""
         <div style="font-size:14px;font-weight:700;color:#555;margin:16px 0 10px 0;padding-bottom:4px;border-bottom:2px solid #ccc;">
-          {journal} ({len(journal_items)})
+          {escape(str(journal))} ({len(journal_items)})
         </div>
         {cards}""")
     return "".join(groups)
@@ -162,8 +222,35 @@ def _section_banner(title: str, count: int, color: str) -> str:
     </table>"""
 
 
+def _build_digest_message(
+    components: List[Dict[str, Any]],
+    date_range: Tuple[str, str],
+    sender: str,
+    recipient: str,
+    html_attachment_path: str = None,
+) -> MIMEMultipart:
+    """Build a standards-compliant mixed message with alternative body parts."""
+    msg = MIMEMultipart("mixed")
+    body = MIMEMultipart("alternative")
+    msg["Subject"] = build_email_subject(len(components), date_range)
+    msg["From"] = sender
+    msg["To"] = recipient
+    body.attach(MIMEText(build_plaintext_body(components, date_range), "plain"))
+    body.attach(MIMEText(build_html_body(components, date_range), "html"))
+    msg.attach(body)
+
+    if html_attachment_path:
+        with Path(html_attachment_path).open("rb") as attachment_file:
+            attachment = MIMEApplication(attachment_file.read(), _subtype="html")
+        attachment.add_header(
+            "Content-Disposition", "attachment", filename="publications.html"
+        )
+        msg.attach(attachment)
+    return msg
+
+
 def build_html_body(components: List[Dict[str, Any]], date_range: Tuple[str, str]) -> str:
-    start, end = date_range
+    start, end = (escape(str(value)) for value in date_range)
     if not components:
         body = "<p>No new papers matched your criteria this week.</p>"
     else:
@@ -201,23 +288,13 @@ def send_digest_email(
     send never silently drops a paper from future digests.
     """
     creds = load_smtp_env()
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = build_email_subject(len(new_components), date_range)
-    msg["From"] = creds["GMAIL_ADDRESS"]
-    msg["To"] = creds["RECIPIENT_EMAIL"]
-    msg.attach(MIMEText(build_plaintext_body(new_components, date_range), "plain"))
-    msg.attach(MIMEText(build_html_body(new_components, date_range), "html"))
-
-    if html_attachment_path:
-        attachment_path = Path(html_attachment_path)
-        with attachment_path.open("rb") as f:
-            attachment = MIMEApplication(f.read(), _subtype="html")
-        attachment.add_header(
-            "Content-Disposition",
-            "attachment",
-            filename="publications.html",
-        )
-        msg.attach(attachment)
+    msg = _build_digest_message(
+        new_components,
+        date_range,
+        creds["GMAIL_ADDRESS"],
+        creds["RECIPIENT_EMAIL"],
+        html_attachment_path,
+    )
 
     print(f'   Sending email via {SMTP_HOST}:{SMTP_PORT} to {creds["RECIPIENT_EMAIL"]}...')
     with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT) as server:

@@ -10,6 +10,45 @@ from core.date_utils import parse_api_date
 
 
 
+def _matched_search_keywords(record: Dict[str, Any]) -> List[str]:
+    """Read the search terms that returned a raw record or paper component."""
+    values = []
+    existing = record.get("MatchedKeywords") or record.get("SearchKeywords") or []
+    if isinstance(existing, str):
+        existing = [existing]
+    if isinstance(existing, list):
+        values.extend(existing)
+    singular = record.get("search_keyword")
+    if singular:
+        values.append(singular)
+
+    unique = []
+    seen = set()
+    for value in values:
+        if not isinstance(value, str) or not value.strip():
+            continue
+        keyword = value.strip()
+        normalized = keyword.casefold()
+        if normalized not in seen:
+            seen.add(normalized)
+            unique.append(keyword)
+    return unique
+
+
+def _merge_matched_keywords(target: Dict[str, Any], source: Dict[str, Any]) -> None:
+    """Union distinct search terms from a duplicate record into its survivor."""
+    keywords = _matched_search_keywords(target) + _matched_search_keywords(source)
+    unique = []
+    seen = set()
+    for keyword in keywords:
+        normalized = keyword.casefold()
+        if normalized not in seen:
+            seen.add(normalized)
+            unique.append(keyword)
+    if unique:
+        target["MatchedKeywords"] = unique
+
+
 def extract_pubmed_authors(article_data: Dict[str, Any]) -> List[str]:
     """Extract authors from PubMed article data."""
     try:
@@ -201,11 +240,15 @@ def remove_duplicate_papers(components: List[Dict[str, Any]]) -> List[Dict[str, 
     seen_titles = set()
     unique_components = []
     
+    title_components = {}
     for component in components:
         title = component.get("Title", "").strip().lower()
         if title and title not in seen_titles:
             seen_titles.add(title)
+            title_components[title] = component
             unique_components.append(component)
+        elif title:
+            _merge_matched_keywords(title_components[title], component)
     
     return unique_components
 
@@ -231,11 +274,17 @@ def process_pubmed_papers(papers: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             for article in paper["PubmedArticle"]:
                 if "MedlineCitation" in article and "Article" in article["MedlineCitation"]:
                     component = extract_pubmed_paper_info(article)
+                    matched_keywords = _matched_search_keywords(paper)
+                    if matched_keywords:
+                        component["MatchedKeywords"] = matched_keywords
                     components.append(component)
         else:
             # Handle direct article format
             if "MedlineCitation" in paper and "Article" in paper["MedlineCitation"]:
                 component = extract_pubmed_paper_info(paper)
+                matched_keywords = _matched_search_keywords(paper)
+                if matched_keywords:
+                    component["MatchedKeywords"] = matched_keywords
                 components.append(component)
     
     return components
@@ -258,6 +307,9 @@ def process_crossref_papers(papers: List[Dict[str, Any]]) -> List[Dict[str, Any]
     
     for paper in papers:
         component = extract_crossref_paper_info(paper)
+        matched_keywords = _matched_search_keywords(paper)
+        if matched_keywords:
+            component["MatchedKeywords"] = matched_keywords
         components.append(component)
     
     return components

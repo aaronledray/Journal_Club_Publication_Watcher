@@ -5,11 +5,13 @@ Fetch PubMed papers by journal, keyword, and author filters, then generate Power
 
 
 
-## Motivation:
+## Purpose
 
-I wanted to track publications formally and avoid the paranoid feeling of missing out on cool new research. Now I run this weekly in the morning over coffee!
-
-Specifically I wanted a powerpoint output from articles-of-interest, such that I can flip through the abstracts and keep up with recent cool publications and build up a list of interesting authors. I don't like newsletters or weekly update emails because the information conveyed is usually not logged in a manner that makes it clear what one has already encountered. Altogether this makes it easier for me to __quickly__ communicate new publications to colleagues (~25 people). - APL
+Journal Club Publication Watcher is an open-source research monitoring tool. It
+collects matching PubMed and Crossref records, keeps published articles and
+preprints distinct, and produces review-friendly PowerPoint, HTML, text, and
+JSON reports. Its optional weekly digest tracks previously sent records so
+papers are not repeatedly emailed.
 
 
 
@@ -91,6 +93,19 @@ Omit `preprint_topics` to just reuse `topics` for preprints too.
 
 ## Usage:
 
+### Try a synthetic offline demo
+
+Generate sample PowerPoint, HTML, text, JSON, and digest-preview files without
+loading local configuration, contacting PubMed or CrossRef, or sending email:
+
+```bash
+python examples/demo.py
+```
+
+The demo writes to `demo-output/` and refuses to use a non-empty destination.
+Open `demo-output/digest-preview.html` to see the sample digest. The records are
+fictional. Choose another empty directory with `--output-dir` if needed.
+
 ```bash
 # Interactive mode (default)
 python main.py
@@ -120,17 +135,24 @@ python main.py --auto --notify-email
 
 
 
-## Weekly Email Digest (GitHub Actions):
+## Optional Weekly Email Digest (GitHub Actions)
 
-A GitHub Actions workflow (`.github/workflows/weekly-digest.yml`) runs `main.py --auto --notify-email` on a schedule in the cloud, so you get a weekly email of newly-published papers without needing your own machine to be on.
+The public repository includes an inactive [workflow example](examples/workflows/weekly-digest.yml).
+To use it in your own repository, copy it to
+`.github/workflows/weekly-digest.yml` and add the required Actions secrets.
+The example runs `main.py --auto --notify-email` on a schedule and can also be
+started manually. The personal scheduled deployment is maintained separately
+from this public project.
 
-**How dedup works**: each run compares found papers against `state/seen_ids.json` (identified by PMID, then DOI, then a slugified title as a fallback) and only emails ones it hasn't reported before, then commits the updated state file back to the repo. This file only stores PMIDs/DOIs/title-slugs — no personal data — so it's safe to keep tracked in the public repo. Don't hand-edit or delete it; deleting it will cause every currently-matching paper to be re-sent once.
+The digest separates published articles from preprints and groups papers by journal. Within each journal group, papers matching more distinct search terms appear first, with newer papers first when match counts are tied; the matched terms are shown with each paper.
+
+**How dedup works**: each run compares found papers against `state/seen_ids.json` (identified by PMID, DOI, then a slugified title as a fallback) and emails records it has not reported before. State is updated only after a successful send. The example workflow commits this file so state survives between runs. PMIDs, DOIs, and title slugs are public identifiers; their collection can reveal publication or reading interests. If that matters for your search, run the workflow from a private repository. Don't hand-edit or delete the state file; deleting it can cause matching papers to be sent again.
 
 ### One-time setup
 
 **1. Gmail App Password** — the sending Gmail account needs 2-Step Verification enabled, then generate one at Google Account → Security → App Passwords → scope "Mail" (a regular Gmail password will not work with SMTP here).
 
-**2. Bundle your personal config as a secret** — `config/*.yaml` (your keywords, journals, ORCIDs) stays gitignored and out of the public repo. Instead, package it as a single base64-encoded secret the workflow decodes at run time:
+**2. Bundle your local config as a secret** — `config/*.yaml` stays gitignored and out of the repository. Package it as a single base64-encoded secret that the workflow decodes at run time:
 
 ```bash
 tar -czf /tmp/config-bundle.tar.gz -C config meta.yaml journals.yaml keywords.yaml authors.yaml dates.yaml
@@ -148,7 +170,7 @@ Re-run this any time your local `config/*.yaml` files change — the secret is a
 
 ### Schedule and manual runs
 
-The default schedule is `0 13 * * 1` (Monday 13:00 UTC — GitHub Actions cron is always UTC, adjust for your local time). Edit the `cron:` line in the workflow file to change it. You can also trigger a test run any time from the Actions tab → "Weekly Publication Digest" → "Run workflow" (`workflow_dispatch`).
+The example schedule is `0 13 * * 1` (Monday 13:00 UTC; GitHub Actions cron is always UTC). Edit the `cron:` line to change it. You can also start a run from the Actions tab → "Weekly Publication Digest" → "Run workflow" (`workflow_dispatch`).
 
 
 

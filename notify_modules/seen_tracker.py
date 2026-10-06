@@ -9,10 +9,13 @@ it so state survives across ephemeral runners.
 """
 
 import json
+import math
 import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List
+
+from core.date_utils import parse_lookup_frequency
 
 DEFAULT_SEEN_STATE_PATH = "state/seen_ids.json"
 STATE_VERSION = 1
@@ -113,20 +116,35 @@ def mark_seen(components: List[Dict[str, Any]], seen_state: Dict[str, Any]) -> D
     return seen_state
 
 
-def prune_old_entries(seen_state: Dict[str, Any], max_age_days: int = DEFAULT_PRUNE_AFTER_DAYS) -> Dict[str, Any]:
+def prune_old_entries(
+    seen_state: Dict[str, Any],
+    max_age_days: int = DEFAULT_PRUNE_AFTER_DAYS,
+    lookup_frequency: str = None,
+) -> Dict[str, Any]:
     """
-    Drop entries older than max_age_days so the file doesn't grow forever.
-    Safe because PubMed/CrossRef date-range queries only ever look a few
-    weeks back (meta.yaml lookup_frequency), so an entry this old can
-    never legitimately reappear as a "new" search hit.
+    Keep entries at least as long as the configured search window so a paper
+    cannot reappear as new while it can still be returned by a later query.
     """
-    cutoff = datetime.now(timezone.utc) - timedelta(days=max_age_days)
+    retention_days = max_age_days
+    if lookup_frequency:
+        try:
+            frequency_days = math.ceil(
+                parse_lookup_frequency(lookup_frequency).total_seconds() / 86400
+            )
+            retention_days = max(retention_days, frequency_days + 7)
+        except ValueError:
+            pass  # Keep the safe default if called with an invalid frequency.
+
+    cutoff = datetime.now(timezone.utc) - timedelta(days=retention_days)
     kept = {}
     for cid, ts in seen_state.get("seen", {}).items():
         try:
-            if datetime.fromisoformat(ts) >= cutoff:
+            timestamp = datetime.fromisoformat(ts)
+            if timestamp.tzinfo is None:
+                timestamp = timestamp.replace(tzinfo=timezone.utc)
+            if timestamp >= cutoff:
                 kept[cid] = ts
-        except ValueError:
+        except (TypeError, ValueError):
             kept[cid] = ts  # keep unparseable timestamps rather than risk data loss
     seen_state["seen"] = kept
     return seen_state

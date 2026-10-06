@@ -1,0 +1,32 @@
+{
+  "DOI": "10.1101/2024.01.01.0001",
+  "URL": "https://doi.org/10.1101/2024.01.01.0001",
+  "type": "posted-content",
+  "title": ["A synthetic preprint with related works"],
+  "relation": {
+    "is-preprint-of": [
+      {
+        "id-type": "doi",
+        "id": "https://doi.org/10.1038/S41586-024-00001-2."
+      },
+      {
+        "id-type": "doi",
+        "id": "doi:10.1000/SECOND"
+      },
+      {
+        "id-type": "doi",
+        "id": "10.1038/s41586-024-00001-2"
+      }
+    ],
+    "has-preprint": [
+      {
+        "id-type": "doi",
+        "id": "http://doi.org/10.1101/2024.01.01.0001"
+      }
+    ],
+    "is-version-of": {
+      "id-type": "doi",
+      "id": "10.5555/RELATED-WORK"
+    }
+  }
+}

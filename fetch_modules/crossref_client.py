@@ -427,23 +427,40 @@ def search_preprints_by_keywords(
 
 
 def remove_duplicate_dois(publications: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """
-    Remove duplicate publications based on DOI.
-    
-    Args:
-        publications: List of publication dictionaries
-        
-    Returns:
-        List with duplicates removed
-    """
-    seen_dois = set()
+    """Deduplicate CrossRef results by DOI while retaining every matched term."""
+    by_doi = {}
     unique_pubs = []
     
     for pub in publications:
-        doi = pub.get("DOI", "").lower()
-        if doi and doi not in seen_dois:
-            seen_dois.add(doi)
+        doi = (pub.get("DOI") or "").strip().lower()
+        if doi and doi not in by_doi:
+            by_doi[doi] = pub
             unique_pubs.append(pub)
+        elif doi:
+            primary = by_doi[doi]
+            keywords = []
+            for record in (primary, pub):
+                values = record.get("SearchKeywords") or []
+                if isinstance(values, str):
+                    values = [values]
+                if isinstance(values, list):
+                    keywords.extend(values)
+                singular = record.get("search_keyword")
+                if singular:
+                    keywords.append(singular)
+
+            unique_keywords = []
+            seen_keywords = set()
+            for keyword in keywords:
+                if not isinstance(keyword, str) or not keyword.strip():
+                    continue
+                keyword = keyword.strip()
+                normalized = keyword.casefold()
+                if normalized not in seen_keywords:
+                    seen_keywords.add(normalized)
+                    unique_keywords.append(keyword)
+            if unique_keywords:
+                primary["SearchKeywords"] = unique_keywords
         elif not doi:
             # Keep publications without DOIs (they might be unique)
             unique_pubs.append(pub)

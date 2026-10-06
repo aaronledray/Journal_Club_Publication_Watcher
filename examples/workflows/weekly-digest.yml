@@ -1,3 +1,5 @@
+# Example workflow. Copy this file into .github/workflows/ in your own
+# repository only after adding the required Actions secrets.
 name: Weekly Publication Digest
 
 on:
@@ -13,7 +15,8 @@ permissions:
 
 jobs:
   send-digest:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -24,17 +27,37 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: python -m pip install -r requirements.txt
+
+      - name: Check required secrets
+        shell: bash
+        env:
+          CONFIG_BUNDLE_B64: ${{ secrets.CONFIG_BUNDLE_B64 }}
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          RECIPIENT_EMAIL: ${{ secrets.RECIPIENT_EMAIL }}
+        run: |
+          missing=()
+          for name in CONFIG_BUNDLE_B64 GMAIL_ADDRESS GMAIL_APP_PASSWORD RECIPIENT_EMAIL; do
+            if [[ -z "${!name:-}" ]]; then
+              missing+=("$name")
+            fi
+          done
+          if (( ${#missing[@]} )); then
+            printf 'Missing required repository secret(s): %s\n' "${missing[*]}"
+            exit 1
+          fi
 
       - name: Restore personal config from secret
         env:
           CONFIG_BUNDLE_B64: ${{ secrets.CONFIG_BUNDLE_B64 }}
         run: |
+          set -euo pipefail
+          bundle="$(mktemp)"
+          trap 'rm -f "$bundle"' EXIT
           mkdir -p config
-          echo "$CONFIG_BUNDLE_B64" | base64 -d > config-bundle.tar.gz
-          tar -xzf config-bundle.tar.gz -C config
-          rm config-bundle.tar.gz
-          ls -la config/
+          printf '%s' "$CONFIG_BUNDLE_B64" | base64 --decode > "$bundle"
+          tar -xzf "$bundle" -C config --no-same-owner
 
       - name: Run weekly lookup and send email digest
         env:

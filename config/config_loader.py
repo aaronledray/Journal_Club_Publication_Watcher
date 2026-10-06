@@ -84,13 +84,13 @@ def validate_config(config: Dict[str, Any]) -> None:
     if not email:
         raise ValueError("Missing required configuration field: email")
     if '@' not in email or email.count('@') != 1:
-        raise ValueError(f"Invalid email format: {email}")
+        raise ValueError("Invalid email format")
     
     lookup_frequency = config.get('lookup_frequency')
     try:
         parse_lookup_frequency(lookup_frequency)
     except Exception as exc:
-        raise ValueError(f"Invalid lookup_frequency '{lookup_frequency}': {exc}") from exc
+        raise ValueError("Invalid lookup_frequency") from exc
     
     journals = config.get('journals', [])
     if not isinstance(journals, list) or not journals:
@@ -186,13 +186,12 @@ def load_config(config_dir: str = 'config') -> Tuple[Dict[str, Any], Dict[str, i
     
     # Debug output
     print(f"  Loaded configuration:")
-    print(f"  Email: {config_dict['email']}")
     print(f"  Journals: {len(config_dict['journals'])} configured")
     print(f"  Keywords: {len(config_dict['topics'])} configured")
     print(f"  Authors/ORCIDs: {len(config_dict['orcids'])} configured")
     print(f"  Date ranges: {len(config_dict['date_ranges'])} configured")
     if config_dict['preprint_servers']:
-        print(f"  Preprint servers: {', '.join(config_dict['preprint_servers'])}")
+        print(f"  Preprint servers: {len(config_dict['preprint_servers'])} configured")
         print(f"  Preprint keywords: {len(config_dict['preprint_topics'])} configured")
     
     return config_dict, keyword_frequency_dict
@@ -297,8 +296,10 @@ def main() -> None:
         try:
             load_config()
             print("Configuration validation passed.")
-        except Exception as exc:
-            print(f"Configuration validation failed: {exc}")
+        except Exception:
+            # Exception text from YAML parsing or validation can contain
+            # configured values. Keep the check command value-free.
+            print("Configuration validation failed; inspect local config files.")
             raise SystemExit(1)
     
     if not args.init_samples and not args.check:

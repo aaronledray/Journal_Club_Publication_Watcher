@@ -163,7 +163,7 @@ def generate_outputs(
 ) -> None:
     """Generate all output files."""
     output_path = Path(output_dir)
-    output_path.mkdir(exist_ok=True)
+    output_path.mkdir(parents=True, exist_ok=True)
     
     components_all = components_keyword + components_orcid
     
@@ -201,6 +201,7 @@ def generate_outputs(
         components=components_all,
         keyword_frequency_dict=keyword_frequencies,
         html_name=str(html_path),
+        json_dump_path=str(output_path / 'results.json'),
         auto_mode=auto_mode
     )
     
@@ -260,7 +261,10 @@ def notify_new_papers_by_email(
         send_digest_email(new_components, date_range, str(html_path))
 
     seen_state = mark_seen(new_components, seen_state)
-    seen_state = prune_old_entries(seen_state)
+    seen_state = prune_old_entries(
+        seen_state,
+        lookup_frequency=config.get('lookup_frequency'),
+    )
     save_seen_state(seen_state, seen_state_path)
     print(f'   Updated seen-state file: {seen_state_path}')
 

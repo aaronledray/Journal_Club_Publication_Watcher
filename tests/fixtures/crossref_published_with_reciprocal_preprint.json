@@ -1,0 +1,13 @@
+{
+  "DOI": "10.1038/s41586-024-00001-2",
+  "type": "journal-article",
+  "title": ["A synthetic published article"],
+  "relation": {
+    "has-preprint": [
+      {
+        "id-type": "doi",
+        "id": "https://doi.org/10.1101/2024.01.01.0001"
+      }
+    ]
+  }
+}
