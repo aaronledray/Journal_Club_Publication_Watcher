@@ -30,21 +30,21 @@ Done: configuration diagnostics no longer print configured values; digest HTML
 escapes API content and accepts only HTTP(S) links; HTML attachments use a
 `multipart/mixed` message containing an `alternative` body; seen-state retention
 covers the configured lookup window; nested output directories are created;
+HTML generation skips a duplicate JSON sidecar during normal report writing;
 README explains that public deduplication IDs can reveal reading interests.
 
 ## Public deployment boundary
 
-In progress: the personal workflow and a copy of its state are in a private
-deployment repository. Its workflow is disabled until the four
-required secrets are added. The public schedule has been disabled; its workflow
-is now an example under `examples/workflows/`. The public state file remains
-tracked and unchanged, as required, but will no longer receive personal
-updates once the code changes are merged. Add the private secrets, enable the
-private workflow, then remove the now-unused secrets from the public repo.
+Done: the personal workflow and a copy of its state are in a private deployment
+repository. Its workflow is active with all required secrets configured. The
+public schedule is disabled, its workflow is an example under
+`examples/workflows/`, and the old public repository secrets have been removed.
+The public state file remains tracked and unchanged; future updates are private.
 
 ## GitHub Actions runner incident
 
-The October 5 run was cancelled before workflow steps started because GitHub
-could not allocate a hosted runner after retries. Pinning CI and digest jobs to
-`ubuntu-24.04` avoids the announced `ubuntu-latest` migration to Ubuntu 26; it
-does not address transient hosted-runner capacity failures.
+Done: the October 5 run was cancelled before workflow steps started because
+GitHub could not allocate a hosted runner after retries; the preceding weekly
+run succeeded. This was an infrastructure failure, not a tool error. Pinning
+CI and digest jobs to `ubuntu-24.04` avoids the announced `ubuntu-latest`
+migration to Ubuntu 26, but does not prevent transient hosted-runner failures.
