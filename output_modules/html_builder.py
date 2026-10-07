@@ -5,9 +5,30 @@ Creates interactive HTML dashboards with DataTables and dark/light mode support.
 
 import json
 import os
+import re
+from html import escape
 from datetime import datetime, date
 from pathlib import Path
 from typing import Dict, List, Any, Tuple
+from urllib.parse import urlsplit
+
+
+def _text(value: Any) -> str:
+    """Escape untrusted values before inserting them into HTML text nodes."""
+    return escape(str(value), quote=True)
+
+
+def _safe_http_url(value: Any) -> str:
+    """Return an escaped HTTP(S) URL, or an empty string for unsafe schemes."""
+    candidate = str(value or "")
+    if urlsplit(candidate).scheme.lower() not in {"http", "https"}:
+        return ""
+    return escape(candidate, quote=True)
+
+
+def _safe_identifier(value: Any) -> str:
+    """Make stable HTML identifiers from source labels."""
+    return re.sub(r"[^A-Za-z0-9_-]+", "_", str(value)).strip("_") or "item"
 
 
 def make_json_safe(obj: Any) -> Any:
@@ -16,7 +37,7 @@ def make_json_safe(obj: Any) -> Any:
     
     Args:
         obj: Object to convert
-        
+
     Returns:
         JSON-serializable version of the object
     """
@@ -159,7 +180,7 @@ def write_html_head(f, title: str = "Journal Lookup Dashboard") -> None:
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{title}</title>
+  <title>{_text(title)}</title>
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
   <link rel="stylesheet" href="https://cdn.datatables.net/colreorder/1.6.2/css/colReorder.dataTables.min.css">
   <style>
@@ -496,7 +517,7 @@ def write_html_header(f, config_file_dict: Dict[str, Any], start_end_date: Tuple
         f.write(f"""
       <div class="stat-card">
         <div class="stat-number">{count}</div>
-        <div>{get_source_label(source)}</div>
+        <div>{_text(get_source_label(str(source)))}</div>
       </div>
 """)
     
@@ -516,13 +537,13 @@ def write_html_header(f, config_file_dict: Dict[str, Any], start_end_date: Tuple
     </div>
 """.format(
         datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-        start_date, end_date,
-        config_file_dict.get('email', 'Not specified')
+        _text(start_date), _text(end_date),
+        _text(config_file_dict.get('email', 'Not specified'))
     ))
 
     # Configuration details
     if config_file_dict.get('journals'):
-        journals_str = ", ".join(config_file_dict['journals'])
+        journals_str = _text(", ".join(str(journal) for journal in config_file_dict['journals']))
         
         f.write(f"""
     <div class="meta-info">
@@ -532,7 +553,7 @@ def write_html_header(f, config_file_dict: Dict[str, Any], start_end_date: Tuple
 """)
     
     if config_file_dict.get('topics'):
-        topics_str = ", ".join(config_file_dict['topics'])
+        topics_str = _text(", ".join(str(topic) for topic in config_file_dict['topics']))
         
         f.write(f"""
       <div class="meta-item">
@@ -545,7 +566,7 @@ def write_html_header(f, config_file_dict: Dict[str, Any], start_end_date: Tuple
         for author in config_file_dict['named_authors']:
             name = author.get('name', 'Unknown')
             orcid = author.get('orcid', '')
-            authors_info.append(f"{name} ({orcid})")
+            authors_info.append(f"{_text(name)} ({_text(orcid)})")
         
         authors_str = ", ".join(authors_info)
         
@@ -590,7 +611,8 @@ def write_table_section(f, components: List[Dict[str, Any]], paper_type: str) ->
         return
     
     label = get_source_label(paper_type)
-    table_id = f"papersTable_{paper_type}"
+    safe_type = _safe_identifier(paper_type)
+    table_id = f"papersTable_{safe_type}"
     
     # Count papers for this type
     type_count = sum(1 for comp in components if comp.get("Source") == paper_type)
@@ -598,7 +620,7 @@ def write_table_section(f, components: List[Dict[str, Any]], paper_type: str) ->
     f.write(f"""
   <div class="section">
     <h2>
-      {label}
+      {_text(label)}
       <span style="font-size: 0.7em; font-weight: normal; color: var(--text-color); opacity: 0.7;">
         ({type_count} papers)
       </span>
@@ -612,6 +634,7 @@ def write_table_section(f, components: List[Dict[str, Any]], paper_type: str) ->
           <th>Journal</th>
           <th>Date</th>
           <th>DOI</th>
+          <th>Published Version</th>
           <th>Authors (first & last)</th>
           <th>Institutions</th>
         </tr>
@@ -631,55 +654,63 @@ def write_table_section(f, components: List[Dict[str, Any]], paper_type: str) ->
         institutions = ", ".join(institutions_list) if isinstance(institutions_list, list) else "N/A"
         date_str = safe_date_str(comp.get("Date"))
         doi = safe_link(comp.get("Link"))
+        published_dois = comp.get("PublishedDOIs") or []
         
         # Create unique IDs for expandable content
         title_hash = abs(hash(title)) % 10000
-        abstract_id = f"{paper_type}_abstract_{title_hash}"
-        inst_id = f"{paper_type}_inst_{title_hash}"
-        author_id = f"{paper_type}_authors_{title_hash}"
+        abstract_id = f"{safe_type}_abstract_{title_hash}"
+        inst_id = f"{safe_type}_inst_{title_hash}"
+        author_id = f"{safe_type}_authors_{title_hash}"
         
         # Format DOI link
         if doi and doi != "N/A" and "doi.org" not in doi:
-            doi_link = f'<a href="https://doi.org/{doi}" target="_blank" class="doi-link">{doi}</a>'
-        elif doi and doi != "N/A":
-            doi_link = f'<a href="{doi}" target="_blank" class="doi-link">{doi}</a>'
+            doi_url = _safe_http_url(f"https://doi.org/{doi}")
+            doi_link = f'<a href="{doi_url}" target="_blank" rel="noopener noreferrer" class="doi-link">{_text(doi)}</a>'
+        elif doi and doi != "N/A" and (safe_doi_url := _safe_http_url(doi)):
+            doi_link = f'<a href="{safe_doi_url}" target="_blank" rel="noopener noreferrer" class="doi-link">{_text(doi)}</a>'
         else:
             doi_link = "N/A"
+
+        published_version_links = "<br>".join(
+            f'<a href="https://doi.org/{_text(published_doi)}" target="_blank" rel="noopener noreferrer" class="doi-link">{_text(published_doi)}</a>'
+            for published_doi in published_dois
+        ) or "N/A"
         
         # Format authors
         if authors_list:
             first_author = authors_list[0]
             if len(authors_list) == 1:
-                author_display = f'<span class="author-main">{first_author}</span>'
+                author_display = f'<span class="author-main">{_text(first_author)}</span>'
             elif len(authors_list) == 2:
-                author_display = f'<span class="author-main">{first_author}</span>, {authors_list[1]}'
+                author_display = f'<span class="author-main">{_text(first_author)}</span>, {_text(authors_list[1])}'
             else:
                 last_author = authors_list[-1]
                 middle_authors = ", ".join(authors_list[1:-1])
                 author_button = f'<span class="abstract-toggle" onclick="toggleAbstract(\'{author_id}\')"> (+{len(authors_list)-2} more)</span>'
-                author_block = f'<div id="{author_id}" class="abstract-text">{middle_authors}</div>'
-                author_display = f'<span class="author-main">{first_author}</span>, {last_author}{author_button}{author_block}'
+                author_block = f'<div id="{author_id}" class="abstract-text">{_text(middle_authors)}</div>'
+                author_display = f'<span class="author-main">{_text(first_author)}</span>, {_text(last_author)}{author_button}{author_block}'
         else:
             author_display = "N/A"
         
         f.write(f"""
         <tr>
-          <td class="expanding-cell">{title}</td>
+          <td class="expanding-cell">{_text(title)}</td>
           <td class="expanding-cell">
             <span class="abstract-toggle" onclick="toggleAbstract('{abstract_id}')">
               View Abstract
             </span>
-            <div id="{abstract_id}" class="abstract-text">{abstract}</div>
+            <div id="{abstract_id}" class="abstract-text">{_text(abstract)}</div>
           </td>
-          <td class="expanding-cell">{journal}</td>
-          <td>{date_str}</td>
+          <td class="expanding-cell">{_text(journal)}</td>
+          <td>{_text(date_str)}</td>
           <td>{doi_link}</td>
+          <td>{published_version_links}</td>
           <td class="expanding-cell author-list">{author_display}</td>
           <td class="expanding-cell">
             <span class="abstract-toggle" onclick="toggleAbstract('{inst_id}')">
               View Institutions
             </span>
-            <div id="{inst_id}" class="abstract-text">{institutions}</div>
+            <div id="{inst_id}" class="abstract-text">{_text(institutions)}</div>
           </td>
         </tr>
 """)
@@ -709,14 +740,15 @@ def write_html_scripts(f) -> None:
       colReorder: true,
       order: [[3, 'desc']], // Sort by date by default
       columnDefs: [
-        { targets: [1, 5, 6], orderable: false }, // Disable sorting for expandable columns
+        { targets: [1, 6, 7], orderable: false }, // Disable sorting for expandable columns
         { targets: 0, width: '200px' },
         { targets: 1, width: '350px' }, // Abstract wider
         { targets: 2, width: '180px' },
         { targets: 3, width: '100px' },
         { targets: 4, width: '120px' },
-        { targets: 5, width: '200px' },
-        { targets: 6, width: '200px' }
+        { targets: 5, width: '180px' },
+        { targets: 6, width: '200px' },
+        { targets: 7, width: '200px' }
       ],
       fixedColumns: false,
       autoWidth: false
@@ -980,7 +1012,7 @@ def write_html_dashboard(
         components: List of paper components
         keyword_frequency_dict: Keyword frequency data
         html_name: Output HTML filename
-        json_dump_path: Output JSON filename
+        json_dump_path: Output JSON filename, or None to skip the sidecar
         auto_mode: Whether running in automatic mode
     """
     # Check if file exists and get permission if not in auto mode
@@ -990,17 +1022,17 @@ def write_html_dashboard(
             print("HTML dashboard creation cancelled.")
             return
     
-    # Save JSON data
-    data_for_json = {
-        "start_end_date": [str(d) for d in start_end_date],
-        "config_file_dict": make_json_safe(config_file_dict),
-        "components": make_json_safe(components),
-        "keyword_frequency_dict": make_json_safe(keyword_frequency_dict),
-        "generated_at": datetime.now().isoformat()
-    }
-    
-    with open(json_dump_path, 'w', encoding='utf-8') as jf:
-        json.dump(data_for_json, jf, indent=2)
+    if json_dump_path:
+        data_for_json = {
+            "start_end_date": [str(d) for d in start_end_date],
+            "config_file_dict": make_json_safe(config_file_dict),
+            "components": make_json_safe(components),
+            "keyword_frequency_dict": make_json_safe(keyword_frequency_dict),
+            "generated_at": datetime.now().isoformat()
+        }
+
+        with open(json_dump_path, 'w', encoding='utf-8') as jf:
+            json.dump(data_for_json, jf, indent=2)
     
     # Write HTML dashboard
     with open(html_name, 'w', encoding='utf-8') as f:
@@ -1014,7 +1046,8 @@ def write_html_dashboard(
         write_html_scripts(f)
     
     print(f"Interactive HTML dashboard written to: {html_name}")
-    print(f"Data saved to: {json_dump_path}")
+    if json_dump_path:
+        print(f"Data saved to: {json_dump_path}")
 
 
 # Legacy function name for backward compatibility

@@ -1,0 +1,27 @@
+{
+  "PubmedArticle": [
+    {
+      "MedlineCitation": {
+        "PMID": "98765432",
+        "Article": {
+          "ArticleTitle": "A synthetic PubMed article returned by several terms",
+          "Journal": {
+            "Title": "Synthetic Journal"
+          },
+          "AuthorList": [],
+          "KeywordList": [],
+          "Abstract": {
+            "AbstractText": []
+          },
+          "ArticleDate": [
+            {
+              "Year": "2025",
+              "Month": "02",
+              "Day": "03"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

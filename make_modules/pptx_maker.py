@@ -368,6 +368,13 @@ class PresentationBuilder:
         # DOI/Link
         link = self._extract_link(component.get("Link"))
         paragraph.text += f"DOI: {link}"
+
+        published_dois = component.get("PublishedDOIs") or []
+        if published_dois:
+            published_links = ", ".join(
+                f"https://doi.org/{doi}" for doi in published_dois
+            )
+            paragraph.text += f"\nPublished version: {published_links}"
         
         paragraph.font.size = Pt(12)
         paragraph.font.name = "Calibri"

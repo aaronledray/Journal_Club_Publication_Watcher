@@ -172,6 +172,10 @@ def write_paper_sections(file_handle, components: List[Dict[str, Any]]) -> None:
         link = component.get('Link', 'No link available')
         if link != 'No link available':
             file_handle.write(f"Link: {link}\n")
+
+        published_dois = component.get('PublishedDOIs') or []
+        for published_doi in published_dois:
+            file_handle.write(f"Published version: https://doi.org/{published_doi}\n")
         
         # Keywords
         keywords = component.get('Keywords', [])

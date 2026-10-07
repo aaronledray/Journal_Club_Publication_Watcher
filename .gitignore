@@ -8,6 +8,7 @@ publications.html
 publications.txt
 results.json
 output/
+/demo-output/
 
 # Python caches/env
 __pycache__/
@@ -34,6 +35,6 @@ Thumbs.db
 journal_watcher.db
 
 # Notification state - intentionally NOT ignored.
-# state/seen_ids.json only stores PMIDs/DOIs/title-slugs (non-sensitive) used
-# to dedupe weekly email digests across GitHub Actions runs; it must stay
-# tracked so the workflow can commit updates to it.
+# state/seen_ids.json stores public paper identifiers for deduplication. Their
+# collection may reveal reading interests; preserve the tracked file and avoid
+# resetting or deleting it without a deliberate migration plan.
