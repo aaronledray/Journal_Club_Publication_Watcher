@@ -201,7 +201,7 @@ def generate_outputs(
         components=components_all,
         keyword_frequency_dict=keyword_frequencies,
         html_name=str(html_path),
-        json_dump_path=str(output_path / 'results.json'),
+        json_dump_path=None,
         auto_mode=auto_mode
     )
     

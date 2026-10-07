@@ -9,7 +9,7 @@ All notable changes to the Journal Club Publication Watcher project will be docu
 - Show CrossRef-linked published versions for preprints in email, text, HTML dashboard, and PowerPoint outputs
 - Add offline fixtures for CrossRef publication relations and keyword aggregation
 - Add a synthetic offline demo and CI checks on Python 3.9 and 3.11
-- Keep JSON output inside the selected output directory when generating reports
+- Keep JSON output inside the selected output directory without a duplicate sidecar write or overwrite prompt
 
 ## [3.9.0] - 2026-08-11
 

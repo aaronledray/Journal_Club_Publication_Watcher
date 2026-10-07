@@ -37,7 +37,7 @@ def make_json_safe(obj: Any) -> Any:
     
     Args:
         obj: Object to convert
-        
+
     Returns:
         JSON-serializable version of the object
     """
@@ -1012,7 +1012,7 @@ def write_html_dashboard(
         components: List of paper components
         keyword_frequency_dict: Keyword frequency data
         html_name: Output HTML filename
-        json_dump_path: Output JSON filename
+        json_dump_path: Output JSON filename, or None to skip the sidecar
         auto_mode: Whether running in automatic mode
     """
     # Check if file exists and get permission if not in auto mode
@@ -1022,17 +1022,17 @@ def write_html_dashboard(
             print("HTML dashboard creation cancelled.")
             return
     
-    # Save JSON data
-    data_for_json = {
-        "start_end_date": [str(d) for d in start_end_date],
-        "config_file_dict": make_json_safe(config_file_dict),
-        "components": make_json_safe(components),
-        "keyword_frequency_dict": make_json_safe(keyword_frequency_dict),
-        "generated_at": datetime.now().isoformat()
-    }
-    
-    with open(json_dump_path, 'w', encoding='utf-8') as jf:
-        json.dump(data_for_json, jf, indent=2)
+    if json_dump_path:
+        data_for_json = {
+            "start_end_date": [str(d) for d in start_end_date],
+            "config_file_dict": make_json_safe(config_file_dict),
+            "components": make_json_safe(components),
+            "keyword_frequency_dict": make_json_safe(keyword_frequency_dict),
+            "generated_at": datetime.now().isoformat()
+        }
+
+        with open(json_dump_path, 'w', encoding='utf-8') as jf:
+            json.dump(data_for_json, jf, indent=2)
     
     # Write HTML dashboard
     with open(html_name, 'w', encoding='utf-8') as f:
@@ -1046,7 +1046,8 @@ def write_html_dashboard(
         write_html_scripts(f)
     
     print(f"Interactive HTML dashboard written to: {html_name}")
-    print(f"Data saved to: {json_dump_path}")
+    if json_dump_path:
+        print(f"Data saved to: {json_dump_path}")
 
 
 # Legacy function name for backward compatibility

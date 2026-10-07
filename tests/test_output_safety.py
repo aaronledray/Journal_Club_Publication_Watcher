@@ -11,6 +11,23 @@ from output_modules.html_builder import write_html_dashboard
 
 
 class OutputSafetyTests(unittest.TestCase):
+    def test_dashboard_can_skip_json_sidecar_when_main_writes_it(self):
+        with tempfile.TemporaryDirectory() as directory:
+            html_path = Path(directory) / "dashboard.html"
+            json_path = Path(directory) / "results.json"
+            write_html_dashboard(
+                start_end_date=("2025/01/01", "2025/01/07"),
+                config_file_dict={},
+                components=[],
+                keyword_frequency_dict={},
+                html_name=str(html_path),
+                json_dump_path=None,
+                auto_mode=True,
+            )
+
+            self.assertTrue(html_path.exists())
+            self.assertFalse(json_path.exists())
+
     def test_email_html_escapes_untrusted_paper_fields_and_rejects_unsafe_links(self):
         paper = {
             "Title": '<img src=x onerror="alert(1)">',
