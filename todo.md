@@ -48,3 +48,10 @@ GitHub could not allocate a hosted runner after retries; the preceding weekly
 run succeeded. This was an infrastructure failure, not a tool error. Pinning
 CI and digest jobs to `ubuntu-24.04` avoids the announced `ubuntu-latest`
 migration to Ubuntu 26, but does not prevent transient hosted-runner failures.
+
+## Manual citation handoff
+
+Done: explicitly selected Watcher citations can be exported to an allowlisted
+CSV for local comparison in Zotero Workbench or manual review in Scirolodex.
+The export contains no search configuration or matched terms and has no runtime
+dependency on either project.

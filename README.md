@@ -132,6 +132,26 @@ python main.py --auto --notify-email
 - Text/JSON summaries: `publications.txt`, `results.json`.
 - Confirms with user before overwriting existing files.
 
+## Selected Citation Handoff
+
+To compare a few chosen results with Zotero Workbench or Scirolodex, export only
+the selected citation records from a Watcher `results.json` file:
+
+```bash
+python -m output_modules.citation_handoff \
+  --input /path/to/results.json \
+  --select PMID:12345678 \
+  --select DOI:10.1000/example \
+  --output /path/outside-this-repo/selected-citations.csv
+```
+
+Repeat `--select` for each record. Select by DOI, PMID, or an exact title when
+the record has no identifier. The exporter writes citation metadata only:
+identifiers, title, authors, date, journal, record type, public URL, and any
+Crossref version relation it can resolve. It omits configuration, matched
+search terms, abstracts, and other report fields. Choose an output path outside
+the public repository; existing files are never overwritten.
+
 
 
 
